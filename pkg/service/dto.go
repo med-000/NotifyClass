@@ -1,4 +1,4 @@
-package handler
+package service
 
 import "github.com/med-000/notifyclass/pkg/parser"
 
@@ -7,8 +7,6 @@ type GetCourseRequest struct {
 	Password string `json:"password"`
 	Year     int16  `json:"year"`
 	Term     int16  `json:"term"`
-	Day      int    `json:"day"`
-	Period   int    `json:"period"`
 }
 
 type CourseDTO struct {
@@ -21,6 +19,15 @@ type CourseDTO struct {
 
 type CourseResponse struct {
 	Courses []CourseDTO `json:"courses"`
+}
+
+type GetClassRequest struct {
+	UserID   string `json:"userId"`
+	Password string `json:"password"`
+	Year     int16  `json:"year"`
+	Term     int16  `json:"term"`
+	Day      int    `json:"day"`
+	Period   int    `json:"period"`
 }
 
 type ClassDTO struct {

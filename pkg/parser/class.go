@@ -13,7 +13,9 @@ func ParseClass(html string) *Class {
 	}
 
 	class := &Class{
-		Title:  strings.TrimSpace(doc.Find("h1").First().Text()),
+		Title: strings.TrimSpace(
+			doc.Find("a.course-name").First().Text(),
+		),
 		Groups: []*Group{},
 	}
 

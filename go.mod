@@ -2,10 +2,14 @@ module github.com/med-000/notifyclass
 
 go 1.26.1
 
-require github.com/gocolly/colly v1.2.0
+require (
+	github.com/PuerkitoBio/goquery v1.12.0
+	github.com/gocolly/colly v1.2.0
+	github.com/joho/godotenv v1.5.1
+	github.com/robfig/cron/v3 v3.0.1
+)
 
 require (
-	github.com/PuerkitoBio/goquery v1.12.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/antchfx/htmlquery v1.3.6 // indirect
 	github.com/antchfx/xmlquery v1.5.1 // indirect
