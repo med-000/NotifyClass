@@ -19,12 +19,12 @@ func FetchCourses(req GetCourseRequest) ([]CourseDTO, error) {
 		return nil, err
 	}
 
-	courses := parser.ParseCourses(html)
+	classes := parser.ParseCourses(html,req.Year, req.Term)
 
 	var res []CourseDTO
 
-	for i := range courses {
-		classhtml, err := scraping.FetchClass(c, courses[i].URL)
+	for i := range classes {
+		classhtml, err := scraping.FetchClass(c, classes[i].URL)
 		if err != nil {
 			log.Printf("WARN: class fetch failed: %v", err)
 			continue
@@ -36,11 +36,11 @@ func FetchCourses(req GetCourseRequest) ([]CourseDTO, error) {
 		}
 
 		res = append(res, CourseDTO{
-			Id:     courses[i].Id,
-			Day:    courses[i].Day,
-			Period: courses[i].Period,
-			Title:  courses[i].Title,
-			URL:    courses[i].URL,
+			Id:     classes[i].Id,
+			Day:    classes[i].Day,
+			Period: classes[i].Period,
+			Title:  classes[i].Title,
+			URL:    classes[i].URL,
 			Groups: class.Groups,
 		})
 	}
@@ -60,11 +60,11 @@ func FetchClassByRequest(req GetClassRequest) (*ClassDTO, error) {
 		return nil, err
 	}
 
-	courses := parser.ParseCourses(html)
+	classes := parser.ParseCourses(html,req.Year, req.Term)
 
 	//対象の授業探す
 	var targetURL string
-	for _, course := range courses {
+	for _, course := range classes {
 		if course.Day == req.Day && course.Period == req.Period {
 			targetURL = course.URL
 			break

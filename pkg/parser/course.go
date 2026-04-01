@@ -7,13 +7,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func ParseCourses(html string) []Course {
+func ParseCourses(html string, year, term int16) []*Class {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil
 	}
 
-	var courses []Course
+	var classes []*Class
 
 	doc.Find("#schedule-table tbody tr").Each(func(i int, tr *goquery.Selection) {
 		periodText := strings.TrimSpace(tr.Find(".schedule-table-class_order").Text())
@@ -44,27 +44,27 @@ func ParseCourses(html string) []Course {
 				return
 			}
 
-			url := link
+			fullURL := link
 			if !strings.HasPrefix(link, "http") {
-				url = "https://els.sa.dendai.ac.jp" + link
+				fullURL = "https://els.sa.dendai.ac.jp" + link
 			}
 
+			// --- ID抽出（安全版） ---
 			id := ""
-			parts := strings.Split(url, "/course.php/")
-			if len(parts) > 1 {
-				idPart := parts[1]
+			if idx := strings.Index(fullURL, "/course.php/"); idx != -1 {
+				idPart := fullURL[idx+len("/course.php/"):]
 				id = strings.Split(idPart, "/")[0]
 			}
 
-			courses = append(courses, Course{
+			classes = append(classes, &Class{
 				Id:     id,
 				Day:    j,
 				Period: period,
 				Title:  title,
-				URL:    url,
+				URL:    fullURL,
 			})
 		})
 	})
 
-	return courses
+	return classes
 }

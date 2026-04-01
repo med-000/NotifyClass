@@ -2,14 +2,16 @@ package parser
 
 type Course struct {
 	Id     string
+	Year int16
+	Term int16
+}
+
+type Class struct {
+	Id     string
 	Day    int
 	Period int
 	Title  string
 	URL    string
-}
-
-type Class struct {
-	Title  string
 	Groups []*Group
 }
 
