@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/med-000/notifyclass/db"
 	"github.com/med-000/notifyclass/pkg/service"
 )
 
@@ -28,6 +29,20 @@ func main() {
 	// --- env ---
 	_ = godotenv.Load()
 
+	database, err := db.NewDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("before migrate")
+
+	if err := db.Migrate(database); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("after migrate")
+
+	log.Println("DB ready")
 	// =========================
 	// ① 全授業取得
 	// =========================
