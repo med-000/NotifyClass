@@ -20,7 +20,7 @@ func FetchAll(req GetCourseRequest) (*parser.Course, error) {
 		return nil, err
 	}
 
-	classes := parser.ParseCourses(html, req.Year, req.Term)
+	classes := parser.ParseCourses(html)
 
 	courseID := makeCourseID(req.Year, req.Term)
 
