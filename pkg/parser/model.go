@@ -4,6 +4,7 @@ type Course struct {
 	Id   string
 	Year int
 	Term int
+	Classes []*Class
 }
 
 type Class struct {

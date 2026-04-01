@@ -9,12 +9,12 @@ import (
 	"github.com/med-000/notifyclass/pkg/scraping"
 )
 
-func FetchCourses(req GetCourseRequest) (*CourseDTO, error) {
+func FetchAll(req GetCourseRequest) (*parser.Course, error) {
 	c := colly.NewCollector(
 		colly.AllowedDomains("els.sa.dendai.ac.jp"),
 	)
 
-	html, err := scraping.FetchAll(c, req.UserID, req.Password, req.Year, req.Term)
+	html, err := scraping.FetchCourseHTML(c, req.UserID, req.Password, req.Year, req.Term)
 	if err != nil {
 		log.Printf("ERROR: fetch failed: %v", err)
 		return nil, err
@@ -24,10 +24,10 @@ func FetchCourses(req GetCourseRequest) (*CourseDTO, error) {
 
 	courseID := makeCourseID(req.Year, req.Term)
 
-	var classDTOs []ClassDTO
+	var classDTOs []*parser.Class
 
 	for i := range classes {
-		classhtml, err := scraping.FetchClass(c, classes[i].URL)
+		classhtml, err := scraping.FetchClassHTML(c, classes[i].URL)
 		if err != nil {
 			log.Printf("WARN: class fetch failed: %v", err)
 			continue
@@ -38,7 +38,7 @@ func FetchCourses(req GetCourseRequest) (*CourseDTO, error) {
 			continue
 		}
 
-		classDTOs = append(classDTOs, ClassDTO{
+		classDTOs = append(classDTOs, &parser.Class{
 			Id:     classes[i].Id,
 			Day:    classes[i].Day,
 			Period: classes[i].Period,
@@ -48,57 +48,11 @@ func FetchCourses(req GetCourseRequest) (*CourseDTO, error) {
 		})
 	}
 
-	return &CourseDTO{
+	return &parser.Course{
 		Id:      courseID,
 		Year:    req.Year,
 		Term:    req.Term,
 		Classes: classDTOs,
-	}, nil
-}
-
-func FetchClassByRequest(req GetClassRequest) (*ClassDTO, error) {
-	c := colly.NewCollector(
-		colly.AllowedDomains("els.sa.dendai.ac.jp"),
-	)
-
-	//一覧取得
-	html, err := scraping.FetchAll(c, req.UserID, req.Password, req.Year, req.Term)
-	if err != nil {
-		log.Printf("ERROR: fetch failed: %v", err)
-		return nil, err
-	}
-
-	classes := parser.ParseCourses(html, req.Year, req.Term)
-
-	//対象の授業探す
-	var targetURL string
-	for _, course := range classes {
-		if course.Day == req.Day && course.Period == req.Period {
-			targetURL = course.URL
-			break
-		}
-	}
-
-	if targetURL == "" {
-		return nil, nil
-	}
-
-	//詳細取得
-	classhtml, err := scraping.FetchClass(c, targetURL)
-	if err != nil {
-		log.Printf("ERROR: class fetch failed: %v", err)
-		return nil, err
-	}
-
-	class := parser.ParseClass(classhtml)
-	if class == nil {
-		return nil, nil
-	}
-
-	//DTO化
-	return &ClassDTO{
-		Title:  class.Title,
-		Groups: class.Groups,
 	}, nil
 }
 

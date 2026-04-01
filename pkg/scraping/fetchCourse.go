@@ -9,7 +9,7 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func FetchAll(c *colly.Collector, userId string, pass string, year int, term int) (string, error) {
+func FetchCourseHTML(c *colly.Collector, userId string, pass string, year int, term int) (string, error) {
 	var html string
 	var loggedIn bool
 

@@ -8,7 +8,6 @@ import (
 
 	"github.com/med-000/notifyclass/db"
 	"github.com/med-000/notifyclass/pkg/parser"
-	"github.com/med-000/notifyclass/pkg/service"
 	"gorm.io/gorm"
 )
 
@@ -33,12 +32,10 @@ func parseDate(dateStr string) (*time.Time, *time.Time) {
 	return &start, &end
 }
 
-func SaveClasses(dbConn *gorm.DB, classes []service.ClassDTO) error {
+func SaveClasses(dbConn *gorm.DB, classes []*parser.Class) error {
 	for _, class := range classes {
 
-		// =========================
 		// Class
-		// =========================
 		var dbclass db.Class
 
 		err := dbConn.
@@ -59,14 +56,11 @@ func SaveClasses(dbConn *gorm.DB, classes []service.ClassDTO) error {
 			return err
 		}
 
-		// =========================
-		// Event（シンプル版）
-		// =========================
+		// Event
 		for _, group := range class.Groups {
 			for _, ev := range group.Events {
-				// IDないやつは無視
 				if ev.Id == "" {
-					log.Println("ないよ")
+					log.Println("not found Id")
 					continue
 				}
 
@@ -82,7 +76,6 @@ func SaveClasses(dbConn *gorm.DB, classes []service.ClassDTO) error {
 					EndAt:      end,
 				}
 
-				//IDベースで一意
 				err := dbConn.
 					Where("external_id = ?", ev.Id).
 					FirstOrCreate(&event).Error
@@ -92,7 +85,7 @@ func SaveClasses(dbConn *gorm.DB, classes []service.ClassDTO) error {
 					continue
 				}
 
-				// 更新検知だけ別でやる
+				// 更新検知
 				var existing db.Event
 				if err := dbConn.Where("external_id = ?", ev.Id).First(&existing).Error; err == nil {
 
@@ -118,9 +111,9 @@ func SaveClasses(dbConn *gorm.DB, classes []service.ClassDTO) error {
 	return nil
 }
 
-func SaveCourse(dbConn *gorm.DB, course *service.CourseDTO) error {
+func SaveCourse(dbConn *gorm.DB, course *parser.Course) error {
 
-	// --- Course作成 ---
+	//Course
 	c := db.Course{
 		ID:   course.Id,
 		Year: course.Year,
@@ -131,7 +124,7 @@ func SaveCourse(dbConn *gorm.DB, course *service.CourseDTO) error {
 		return err
 	}
 
-	// --- Class ---
+	//Class
 	for _, class := range course.Classes {
 
 		var existing db.Class
@@ -159,7 +152,7 @@ func SaveCourse(dbConn *gorm.DB, course *service.CourseDTO) error {
 			return err
 		}
 
-		// --- Event ---
+		//Event
 		for _, group := range class.Groups {
 			for _, ev := range group.Events {
 

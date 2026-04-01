@@ -7,7 +7,7 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func FetchClass(c *colly.Collector, url string) (string, error) {
+func FetchClassHTML(c *colly.Collector, url string) (string, error) {
 	baseURL := "https://els.sa.dendai.ac.jp"
 	redirectRe := regexp.MustCompile(`window\.location\.href\s*=\s*"([^"]+)"`)
 

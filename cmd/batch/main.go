@@ -52,7 +52,7 @@ func main() {
 
 	for y := myyear; y <= year; y++ {
 		for term := 1; term <= 2; term++ {
-			fmt.Print(y,term)
+			fmt.Print(y, term)
 			req := service.GetCourseRequest{
 				UserID:   os.Getenv("USER_ID"),
 				Password: os.Getenv("PASSWORD"),
@@ -60,7 +60,7 @@ func main() {
 				Term:     term,
 			}
 
-			courses, err := service.FetchCourses(req)
+			courses, err := service.FetchAll(req)
 			if err != nil {
 				log.Fatal(err)
 			}
