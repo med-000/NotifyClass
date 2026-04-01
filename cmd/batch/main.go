@@ -11,9 +11,7 @@ import (
 )
 
 func main() {
-	// =========================
 	// lock
-	// =========================
 	lockFile := "/tmp/notifyclass.lock"
 
 	if _, err := os.Stat(lockFile); err == nil {
@@ -26,14 +24,10 @@ func main() {
 	}
 	defer os.Remove(lockFile)
 
-	// =========================
 	// env
-	// =========================
 	_ = godotenv.Load()
 
-	// =========================
 	// DB
-	// =========================
 	database, err := db.NewDB()
 	if err != nil {
 		log.Fatal(err)
@@ -45,9 +39,7 @@ func main() {
 
 	log.Println("DB ready")
 
-	// =========================
 	// fetch
-	// =========================
 	req := service.GetCourseRequest{
 		UserID:   os.Getenv("USER_ID"),
 		Password: os.Getenv("PASSWORD"),
@@ -62,9 +54,7 @@ func main() {
 
 	log.Printf("fetched courses: %d\n", len(courses))
 
-	// =========================
 	// save
-	// =========================
 	if err := repository.SaveCourses(database, courses); err != nil {
 		log.Fatal(err)
 	}

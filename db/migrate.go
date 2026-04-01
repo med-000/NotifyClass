@@ -23,7 +23,7 @@ type Class struct {
 type Event struct {
 	ID uint `gorm:"primaryKey"`
 
-	// 必須外部キー（nullableやめる）
+	// 必須外部キー
 	ClassID uint `gorm:"not null;index"`
 
 	// 一意判定の軸
