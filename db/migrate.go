@@ -6,10 +6,21 @@ import (
 	"gorm.io/gorm"
 )
 
+type Course struct {
+	ID   string `gorm:"primaryKey"` // "2025_1"
+	Year int16  `gorm:"not null"`
+	Term int16  `gorm:"not null"`
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type Class struct {
 	ID uint `gorm:"primaryKey"`
 
-	ExternalID string `gorm:"type:varchar(64);uniqueIndex"`
+	ExternalID string `gorm:"type:varchar(64);not null"`
+
+	CourseID string `gorm:"not null;index"` 
 
 	Day    int
 	Period int
@@ -25,8 +36,9 @@ type Event struct {
 
 	ClassID uint `gorm:"not null;index"`
 
-	ExternalID string `gorm:"type:varchar(64);uniqueIndex"`
-	Name       string
+	ExternalID string `gorm:"type:varchar(64);not null"`
+
+	Name string
 
 	Group    string
 	Category string
@@ -45,6 +57,7 @@ type Event struct {
 
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
+		&Course{},
 		&Class{},
 		&Event{},
 	)

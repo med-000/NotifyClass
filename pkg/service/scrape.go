@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gocolly/colly"
@@ -8,7 +9,7 @@ import (
 	"github.com/med-000/notifyclass/pkg/scraping"
 )
 
-func FetchCourses(req GetCourseRequest) ([]CourseDTO, error) {
+func FetchCourses(req GetCourseRequest) (*CourseDTO, error) {
 	c := colly.NewCollector(
 		colly.AllowedDomains("els.sa.dendai.ac.jp"),
 	)
@@ -19,9 +20,11 @@ func FetchCourses(req GetCourseRequest) ([]CourseDTO, error) {
 		return nil, err
 	}
 
-	classes := parser.ParseCourses(html,req.Year, req.Term)
+	classes := parser.ParseCourses(html, req.Year, req.Term)
 
-	var res []CourseDTO
+	courseID := makeCourseID(req.Year, req.Term)
+
+	var classDTOs []ClassDTO
 
 	for i := range classes {
 		classhtml, err := scraping.FetchClass(c, classes[i].URL)
@@ -35,7 +38,7 @@ func FetchCourses(req GetCourseRequest) ([]CourseDTO, error) {
 			continue
 		}
 
-		res = append(res, CourseDTO{
+		classDTOs = append(classDTOs, ClassDTO{
 			Id:     classes[i].Id,
 			Day:    classes[i].Day,
 			Period: classes[i].Period,
@@ -45,7 +48,12 @@ func FetchCourses(req GetCourseRequest) ([]CourseDTO, error) {
 		})
 	}
 
-	return res, nil
+	return &CourseDTO{
+		Id:      courseID,
+		Year:    req.Year,
+		Term:    req.Term,
+		Classes: classDTOs,
+	}, nil
 }
 
 func FetchClassByRequest(req GetClassRequest) (*ClassDTO, error) {
@@ -92,4 +100,8 @@ func FetchClassByRequest(req GetClassRequest) (*ClassDTO, error) {
 		Title:  class.Title,
 		Groups: class.Groups,
 	}, nil
+}
+
+func makeCourseID(year int16, term int16) string {
+	return fmt.Sprintf("%d_%d", year, term)
 }

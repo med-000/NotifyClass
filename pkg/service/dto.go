@@ -11,11 +11,9 @@ type GetCourseRequest struct {
 
 type CourseDTO struct {
 	Id     string          `json:"id"`
-	Day    int             `json:"day"`
-	Period int             `json:"period"`
-	Title  string          `json:"title"`
-	URL    string          `json:"url"`
-	Groups []*parser.Group `json:"groups"`
+	Year    int16             `json:"day"`
+	Term int16             `json:"period"`
+	Classes []ClassDTO `json:"classes"`
 }
 
 type CourseResponse struct {
@@ -33,7 +31,11 @@ type GetClassRequest struct {
 }
 
 type ClassDTO struct {
+	Id     string          `json:"id"`
+	Day    int             `json:"day"`
+	Period int             `json:"period"`
 	Title  string          `json:"title"`
+	URL    string          `json:"url"`
 	Groups []*parser.Group `json:"groups"`
 }
 

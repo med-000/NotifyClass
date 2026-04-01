@@ -33,26 +33,26 @@ func parseDate(dateStr string) (*time.Time, *time.Time) {
 	return &start, &end
 }
 
-func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
-	for _, course := range courses {
+func SaveClasses(dbConn *gorm.DB, classes []service.ClassDTO) error {
+	for _, class := range classes {
 
 		// =========================
 		// Class
 		// =========================
-		var class db.Class
+		var dbclass db.Class
 
 		err := dbConn.
-			Where("external_id = ?", course.Id).
-			First(&class).Error
+			Where("external_id = ?", class.Id).
+			First(&dbclass).Error
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			class = db.Class{
-				ExternalID: course.Id,
-				Day:        course.Day,
-				Period:     course.Period,
-				Title:      course.Title,
+			dbclass = db.Class{
+				ExternalID: class.Id,
+				Day:        class.Day,
+				Period:     class.Period,
+				Title:      class.Title,
 			}
-			if err := dbConn.Create(&class).Error; err != nil {
+			if err := dbConn.Create(&dbclass).Error; err != nil {
 				return err
 			}
 		} else if err != nil {
@@ -62,7 +62,7 @@ func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
 		// =========================
 		// Event（シンプル版）
 		// =========================
-		for _, group := range course.Groups {
+		for _, group := range class.Groups {
 			for _, ev := range group.Events {
 				// IDないやつは無視
 				if ev.Id == "" {
@@ -73,7 +73,7 @@ func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
 				start, end := parseDate(ev.Date)
 
 				event := db.Event{
-					ClassID:    class.ID,
+					ClassID:    dbclass.ID,
 					ExternalID: ev.Id,
 					Name:       ev.Name,
 					Group:      group.Name,
@@ -115,6 +115,85 @@ func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
 			}
 		}
 	}
+	return nil
+}
+
+func SaveCourse(dbConn *gorm.DB, course *service.CourseDTO) error {
+
+	// --- Course作成 ---
+	c := db.Course{
+		ID:   course.Id,
+		Year: course.Year,
+		Term: course.Term,
+	}
+
+	if err := dbConn.FirstOrCreate(&c, db.Course{ID: c.ID}).Error; err != nil {
+		return err
+	}
+
+	// --- Class ---
+	for _, class := range course.Classes {
+
+		var existing db.Class
+
+		err := dbConn.
+			Where("external_id = ? AND course_id = ?", class.Id, course.Id).
+			First(&existing).Error
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			newClass := db.Class{
+				ExternalID: class.Id,
+				CourseID:   course.Id,
+				Day:        class.Day,
+				Period:     class.Period,
+				Title:      class.Title,
+			}
+
+			if err := dbConn.Create(&newClass).Error; err != nil {
+				return err
+			}
+
+			existing = newClass
+
+		} else if err != nil {
+			return err
+		}
+
+		// --- Event ---
+		for _, group := range class.Groups {
+			for _, ev := range group.Events {
+
+				if ev.Id == "" {
+					continue
+				}
+
+				start, end := parseDate(ev.Date)
+
+				var existingEvent db.Event
+
+				err := dbConn.
+					Where("external_id = ? AND class_id = ?", ev.Id, existing.ID).
+					First(&existingEvent).Error
+
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					event := db.Event{
+						ClassID:    existing.ID,
+						ExternalID: ev.Id,
+						Name:       ev.Name,
+						Group:      group.Name,
+						Category:   ev.Category,
+						StartAt:    start,
+						EndAt:      end,
+					}
+
+					if err := dbConn.Create(&event).Error; err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

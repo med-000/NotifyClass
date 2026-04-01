@@ -52,10 +52,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("fetched courses: %d\n", len(courses))
+	log.Printf("fetched courses: %d\n", len(courses.Classes))
 
 	// save
-	if err := repository.SaveCourses(database, courses); err != nil {
+	if err := repository.SaveCourse(database, courses); err != nil {
+		log.Fatal(err)
+	}
+	if err := repository.SaveClasses(database, courses.Classes); err != nil {
 		log.Fatal(err)
 	}
 
