@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/med-000/notifyclass/db"
@@ -39,28 +42,41 @@ func main() {
 
 	log.Println("DB ready")
 
-	// fetch
-	req := service.GetCourseRequest{
-		UserID:   os.Getenv("USER_ID"),
-		Password: os.Getenv("PASSWORD"),
-		Year:     2025,
-		Term:     1,
-	}
+	myyearStr := "20" + os.Getenv("USER_ID")[:2]
 
-	courses, err := service.FetchCourses(req)
+	myyear, err := strconv.Atoi(myyearStr)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
+	year := time.Now().Year()
 
-	log.Printf("fetched courses: %d\n", len(courses.Classes))
+	for y := myyear; y <= year; y++ {
+		for term := 1; term <= 2; term++ {
+			fmt.Print(y,term)
+			req := service.GetCourseRequest{
+				UserID:   os.Getenv("USER_ID"),
+				Password: os.Getenv("PASSWORD"),
+				Year:     y,
+				Term:     term,
+			}
 
-	// save
-	if err := repository.SaveCourse(database, courses); err != nil {
-		log.Fatal(err)
+			courses, err := service.FetchCourses(req)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log.Printf("fetched courses: %d\n", len(courses.Classes))
+
+			// save
+			if err := repository.SaveCourse(database, courses); err != nil {
+				log.Fatal(err)
+			}
+			if err := repository.SaveClasses(database, courses.Classes); err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
-	if err := repository.SaveClasses(database, courses.Classes); err != nil {
-		log.Fatal(err)
-	}
+	// fetch
 
 	log.Println("saved to DB")
 

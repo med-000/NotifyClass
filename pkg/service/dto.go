@@ -5,14 +5,14 @@ import "github.com/med-000/notifyclass/pkg/parser"
 type GetCourseRequest struct {
 	UserID   string `json:"userId"`
 	Password string `json:"password"`
-	Year     int16  `json:"year"`
-	Term     int16  `json:"term"`
+	Year     int    `json:"year"`
+	Term     int    `json:"term"`
 }
 
 type CourseDTO struct {
-	Id     string          `json:"id"`
-	Year    int16             `json:"day"`
-	Term int16             `json:"period"`
+	Id      string     `json:"id"`
+	Year    int        `json:"day"`
+	Term    int        `json:"period"`
 	Classes []ClassDTO `json:"classes"`
 }
 
@@ -24,8 +24,8 @@ type GetClassRequest struct {
 	Id       string `json:"id"`
 	UserID   string `json:"userId"`
 	Password string `json:"password"`
-	Year     int16  `json:"year"`
-	Term     int16  `json:"term"`
+	Year     int    `json:"year"`
+	Term     int    `json:"term"`
 	Day      int    `json:"day"`
 	Period   int    `json:"period"`
 }

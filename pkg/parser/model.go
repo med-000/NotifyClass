@@ -1,9 +1,9 @@
 package parser
 
 type Course struct {
-	Id     string
-	Year int16
-	Term int16
+	Id   string
+	Year int
+	Term int
 }
 
 type Class struct {

@@ -8,8 +8,8 @@ import (
 
 type Course struct {
 	ID   string `gorm:"primaryKey"` // "2025_1"
-	Year int16  `gorm:"not null"`
-	Term int16  `gorm:"not null"`
+	Year int    `gorm:"not null"`
+	Term int    `gorm:"not null"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -20,7 +20,7 @@ type Class struct {
 
 	ExternalID string `gorm:"type:varchar(64);not null"`
 
-	CourseID string `gorm:"not null;index"` 
+	CourseID string `gorm:"not null;index"`
 
 	Day    int
 	Period int

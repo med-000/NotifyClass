@@ -68,7 +68,7 @@ func FetchClassByRequest(req GetClassRequest) (*ClassDTO, error) {
 		return nil, err
 	}
 
-	classes := parser.ParseCourses(html,req.Year, req.Term)
+	classes := parser.ParseCourses(html, req.Year, req.Term)
 
 	//対象の授業探す
 	var targetURL string
@@ -102,6 +102,6 @@ func FetchClassByRequest(req GetClassRequest) (*ClassDTO, error) {
 	}, nil
 }
 
-func makeCourseID(year int16, term int16) string {
+func makeCourseID(year int, term int) string {
 	return fmt.Sprintf("%d_%d", year, term)
 }

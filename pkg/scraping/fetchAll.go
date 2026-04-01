@@ -9,7 +9,7 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func FetchAll(c *colly.Collector, userId string, pass string, year int16, term int16) (string, error) {
+func FetchAll(c *colly.Collector, userId string, pass string, year int, term int) (string, error) {
 	var html string
 	var loggedIn bool
 
@@ -39,8 +39,8 @@ func FetchAll(c *colly.Collector, userId string, pass string, year int16, term i
 			r.Request.Post(
 				baseURL+"/webclass/index.php",
 				map[string]string{
-					"year": strconv.Itoa(int(year)),
-					"term": strconv.Itoa(int(term)),
+					"year":     strconv.Itoa(int(year)),
+					"semester": strconv.Itoa(int(term)),
 				},
 			)
 			return

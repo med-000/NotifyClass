@@ -7,7 +7,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func ParseCourses(html string, year, term int16) []*Class {
+func ParseCourses(html string, year int, term int) []*Class {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil
