@@ -37,7 +37,7 @@ func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
 	for _, course := range courses {
 
 		// =========================
-		// Class（IDベース）
+		// Class
 		// =========================
 		var class db.Class
 
@@ -60,44 +60,42 @@ func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
 		}
 
 		// =========================
-		// Event
+		// Event（シンプル版）
 		// =========================
 		for _, group := range course.Groups {
 			for _, ev := range group.Events {
-
-				// IDないやつは無視（掲示板など）
+				// IDないやつは無視
 				if ev.Id == "" {
+					log.Println("ないよ")
 					continue
 				}
 
 				start, end := parseDate(ev.Date)
 
-				var existing db.Event
+				event := db.Event{
+					ClassID:    class.ID,
+					ExternalID: ev.Id,
+					Name:       ev.Name,
+					Group:      group.Name,
+					Category:   ev.Category,
+					StartAt:    start,
+					EndAt:      end,
+				}
 
+				//IDベースで一意
 				err := dbConn.
 					Where("external_id = ?", ev.Id).
-					First(&existing).Error
+					FirstOrCreate(&event).Error
 
-				if errors.Is(err, gorm.ErrRecordNotFound) {
+				if err != nil {
+					log.Println("insert error:", err)
+					continue
+				}
 
-					// --- 新規 ---
-					event := db.Event{
-						ClassID:    class.ID,
-						ExternalID: ev.Id,
-						Name:       ev.Name,
-						Group:      group.Name,
-						Category:   ev.Category,
-						StartAt:    start,
-						EndAt:      end,
-					}
+				// 更新検知だけ別でやる
+				var existing db.Event
+				if err := dbConn.Where("external_id = ?", ev.Id).First(&existing).Error; err == nil {
 
-					if err := dbConn.Create(&event).Error; err != nil {
-						log.Println("insert error:", err)
-					}
-
-				} else if err == nil {
-
-					// --- 更新検知 ---
 					if changed(existing, ev, start, end, group.Name) {
 
 						update := map[string]interface{}{
@@ -106,8 +104,6 @@ func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
 							"category": ev.Category,
 							"start_at": start,
 							"end_at":   end,
-
-							// ←これが本質
 							"notified": false,
 						}
 
@@ -115,9 +111,6 @@ func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
 							log.Println("update error:", err)
 						}
 					}
-
-				} else {
-					return err
 				}
 			}
 		}
