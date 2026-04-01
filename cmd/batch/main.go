@@ -1,18 +1,19 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"os"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/med-000/notifyclass/db"
+	"github.com/med-000/notifyclass/pkg/repository"
 	"github.com/med-000/notifyclass/pkg/service"
 )
 
 func main() {
-	// --- lock ---
+	// =========================
+	// lock
+	// =========================
 	lockFile := "/tmp/notifyclass.lock"
 
 	if _, err := os.Stat(lockFile); err == nil {
@@ -20,31 +21,32 @@ func main() {
 		return
 	}
 
-	err := os.WriteFile(lockFile, []byte("lock"), 0644)
-	if err != nil {
+	if err := os.WriteFile(lockFile, []byte("lock"), 0644); err != nil {
 		log.Fatal(err)
 	}
 	defer os.Remove(lockFile)
 
-	// --- env ---
+	// =========================
+	// env
+	// =========================
 	_ = godotenv.Load()
 
+	// =========================
+	// DB
+	// =========================
 	database, err := db.NewDB()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("before migrate")
-
 	if err := db.Migrate(database); err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("after migrate")
-
 	log.Println("DB ready")
+
 	// =========================
-	// ① 全授業取得
+	// fetch
 	// =========================
 	req := service.GetCourseRequest{
 		UserID:   os.Getenv("USER_ID"),
@@ -58,40 +60,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	data, _ := json.MarshalIndent(courses, "", "  ")
-
-	filename := "courses_" + time.Now().Format("20060102_150405") + ".json"
-	_ = os.WriteFile(filename, data, 0644)
-
-	log.Println("saved courses:", filename)
+	log.Printf("fetched courses: %d\n", len(courses))
 
 	// =========================
-	// ② 特定授業取得（ここ追加）
+	// save
 	// =========================
-	classReq := service.GetClassRequest{
-		UserID:   os.Getenv("USER_ID"),
-		Password: os.Getenv("PASSWORD"),
-		Year:     2025,
-		Term:     1,
-		Day:      2, // ← 月曜
-		Period:   1, // ← 2限
+	if err := repository.SaveCourses(database, courses); err != nil {
+		log.Fatal(err)
 	}
 
-	class, err := service.FetchClassByRequest(classReq)
-	if err != nil {
-		log.Println("class fetch error:", err)
-		return
-	}
+	log.Println("saved to DB")
 
-	if class == nil {
-		log.Println("class not found")
-		return
-	}
-
-	classData, _ := json.MarshalIndent(class, "", "  ")
-
-	classFile := "class_" + time.Now().Format("20060102_150405") + ".json"
-	_ = os.WriteFile(classFile, classData, 0644)
-
-	log.Println("saved class:", classFile)
+	log.Println("done")
 }

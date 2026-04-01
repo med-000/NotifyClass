@@ -8,9 +8,6 @@ import (
 
 type Class struct {
 	ID uint `gorm:"primaryKey"`
-
-	// coursesと紐づけ（将来用）
-	CourseName string
 	Day        int
 	Period     int
 
@@ -26,22 +23,26 @@ type Class struct {
 type Event struct {
 	ID uint `gorm:"primaryKey"`
 
-	ClassID *uint
+	// 必須外部キー（nullableやめる）
+	ClassID uint `gorm:"not null;index"`
 
-	CourseName string `gorm:"type:varchar(255)"`
-	Day        int
-	Period     int
+	// 一意判定の軸
+	Name string `gorm:"type:varchar(255);not null;uniqueIndex:idx_event_unique"`
 
-	Name     string `gorm:"type:varchar(255);uniqueIndex:idx_event_unique"`
-	Category string `gorm:"type:varchar(100)"`
+	// 表示・分類
+	Group    string `gorm:"type:varchar(100);not null;index"`
+	Category string `gorm:"type:varchar(50);not null;index"`
 
+	// 期間
 	StartAt *time.Time `gorm:"uniqueIndex:idx_event_unique"`
 	EndAt   *time.Time `gorm:"uniqueIndex:idx_event_unique"`
 
-	IsDone   bool
-	Notified bool
+	// 状態
+	IsDone   bool `gorm:"not null;default:false"`
+	Notified bool `gorm:"not null;default:false"`
 
-	NotionPageID *string `gorm:"type:varchar(255)"`
+	// 外部連携
+	NotionPageID *string `gorm:"type:varchar(255);uniqueIndex"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
