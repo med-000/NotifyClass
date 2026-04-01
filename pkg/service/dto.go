@@ -10,6 +10,7 @@ type GetCourseRequest struct {
 }
 
 type CourseDTO struct {
+	Id     string          `json:"id"`
 	Day    int             `json:"day"`
 	Period int             `json:"period"`
 	Title  string          `json:"title"`
@@ -22,6 +23,7 @@ type CourseResponse struct {
 }
 
 type GetClassRequest struct {
+	Id       string `json:"id"`
 	UserID   string `json:"userId"`
 	Password string `json:"password"`
 	Year     int16  `json:"year"`

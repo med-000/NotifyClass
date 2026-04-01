@@ -1,6 +1,7 @@
 package parser
 
 type Course struct {
+	Id     string
 	Day    int
 	Period int
 	Title  string
@@ -18,6 +19,7 @@ type Group struct {
 }
 
 type Event struct {
+	Id       string
 	Name     string
 	Category string
 	Date     string

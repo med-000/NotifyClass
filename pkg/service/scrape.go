@@ -36,6 +36,7 @@ func FetchCourses(req GetCourseRequest) ([]CourseDTO, error) {
 		}
 
 		res = append(res, CourseDTO{
+			Id:     courses[i].Id,
 			Day:    courses[i].Day,
 			Period: courses[i].Period,
 			Title:  courses[i].Title,

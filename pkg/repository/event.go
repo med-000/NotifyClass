@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/med-000/notifyclass/db"
+	"github.com/med-000/notifyclass/pkg/parser"
 	"github.com/med-000/notifyclass/pkg/service"
 	"gorm.io/gorm"
 )
@@ -35,46 +36,123 @@ func parseDate(dateStr string) (*time.Time, *time.Time) {
 func SaveCourses(dbConn *gorm.DB, courses []service.CourseDTO) error {
 	for _, course := range courses {
 
+		// =========================
+		// Class（IDベース）
+		// =========================
 		var class db.Class
+
 		err := dbConn.
-			Where("day = ? AND period = ?", course.Day, course.Period).
+			Where("external_id = ?", course.Id).
 			First(&class).Error
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			class = db.Class{
-				Day:    course.Day,
-				Period: course.Period,
-				Title:  course.Title,
+				ExternalID: course.Id,
+				Day:        course.Day,
+				Period:     course.Period,
+				Title:      course.Title,
 			}
 			if err := dbConn.Create(&class).Error; err != nil {
 				return err
 			}
+		} else if err != nil {
+			return err
 		}
 
+		// =========================
+		// Event
+		// =========================
 		for _, group := range course.Groups {
 			for _, ev := range group.Events {
 
-				start, end := parseDate(ev.Date)
-
-				event := db.Event{
-					ClassID:  class.ID,
-					Name:     ev.Name,
-					Group:    group.Name,
-					Category: ev.Category,
-					StartAt:  start,
-					EndAt:    end,
+				// IDないやつは無視（掲示板など）
+				if ev.Id == "" {
+					continue
 				}
 
-				err := dbConn.
-					Where("name = ? AND start_at <=> ? AND end_at <=> ?",
-						event.Name, event.StartAt, event.EndAt).
-					FirstOrCreate(&event).Error
+				start, end := parseDate(ev.Date)
 
-				if err != nil {
-					log.Println("insert error:", err)
+				var existing db.Event
+
+				err := dbConn.
+					Where("external_id = ?", ev.Id).
+					First(&existing).Error
+
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+
+					// --- 新規 ---
+					event := db.Event{
+						ClassID:    class.ID,
+						ExternalID: ev.Id,
+						Name:       ev.Name,
+						Group:      group.Name,
+						Category:   ev.Category,
+						StartAt:    start,
+						EndAt:      end,
+					}
+
+					if err := dbConn.Create(&event).Error; err != nil {
+						log.Println("insert error:", err)
+					}
+
+				} else if err == nil {
+
+					// --- 更新検知 ---
+					if changed(existing, ev, start, end, group.Name) {
+
+						update := map[string]interface{}{
+							"name":     ev.Name,
+							"group":    group.Name,
+							"category": ev.Category,
+							"start_at": start,
+							"end_at":   end,
+
+							// ←これが本質
+							"notified": false,
+						}
+
+						if err := dbConn.Model(&existing).Updates(update).Error; err != nil {
+							log.Println("update error:", err)
+						}
+					}
+
+				} else {
+					return err
 				}
 			}
 		}
 	}
 	return nil
+}
+
+func changed(e db.Event, ev *parser.Event, start, end *time.Time, group string) bool {
+
+	if e.Name != ev.Name {
+		return true
+	}
+	if e.Group != group {
+		return true
+	}
+	if e.Category != ev.Category {
+		return true
+	}
+
+	if !timeEqual(e.StartAt, start) {
+		return true
+	}
+	if !timeEqual(e.EndAt, end) {
+		return true
+	}
+
+	return false
+}
+
+func timeEqual(a, b *time.Time) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Equal(*b)
 }

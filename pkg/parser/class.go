@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -29,8 +30,20 @@ func ParseClass(html string) *Class {
 			name := strings.TrimSpace(item.Find(".cm-contentsList_contentName").Text())
 			category := strings.TrimSpace(item.Find(".cl-contentsList_categoryLabel").Text())
 			date := strings.TrimSpace(item.Find(".cm-contentsList_contentDetailListItemData").Text())
+			a := item.Find(".cm-contentsList_contentName a")
+
+			href, exists := a.Attr("href")
+			id := ""
+
+			if exists {
+				u, err := url.Parse(href)
+				if err == nil {
+					id = u.Query().Get("set_contents_id")
+				}
+			}
 
 			e := &Event{
+				Id:       id,
 				Name:     name,
 				Category: category,
 				Date:     date,

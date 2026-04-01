@@ -49,7 +49,15 @@ func ParseCourses(html string) []Course {
 				url = "https://els.sa.dendai.ac.jp" + link
 			}
 
+			id := ""
+			parts := strings.Split(url, "/course.php/")
+			if len(parts) > 1 {
+				idPart := parts[1]
+				id = strings.Split(idPart, "/")[0]
+			}
+
 			courses = append(courses, Course{
+				Id:     id,
 				Day:    j,
 				Period: period,
 				Title:  title,
