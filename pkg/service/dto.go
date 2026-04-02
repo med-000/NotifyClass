@@ -6,4 +6,3 @@ type GetCourseRequest struct {
 	Year     int    `json:"year"`
 	Term     int    `json:"term"`
 }
-

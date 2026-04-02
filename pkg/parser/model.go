@@ -1,9 +1,9 @@
 package parser
 
 type Course struct {
-	Id   string
-	Year int
-	Term int
+	Id      string
+	Year    int
+	Term    int
 	Classes []*Class
 }
 
