@@ -33,8 +33,6 @@ type Class struct {
 	Period int
 	Title  string
 
-	NotionPageID *string `gorm:"type:varchar(255);uniqueIndex"`
-
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -55,8 +53,6 @@ type Event struct {
 
 	IsDone   bool `gorm:"default:false"`
 	Notified bool `gorm:"default:false"`
-
-	NotionPageID *string `gorm:"type:varchar(255);uniqueIndex"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

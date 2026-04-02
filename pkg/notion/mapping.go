@@ -1,10 +1,9 @@
-package repository
+package notion
 
 import (
 	"fmt"
 
 	"github.com/med-000/notifyclass/db"
-	"github.com/med-000/notifyclass/pkg/notion"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -67,14 +66,14 @@ func UpsertNotion(
 	}
 
 	if m != nil {
-		err := notion.UpdateNotion(m.NotionPageID, payload)
+		err := UpdateNotion(m.NotionPageID, payload)
 		if err != nil {
 			return "", fmt.Errorf("update notion error: %w", err)
 		}
 		return m.NotionPageID, nil
 	}
 
-	pageID, err := notion.CreateNotion(payload)
+	pageID, err := CreateNotion(payload)
 	if err != nil {
 		return "", fmt.Errorf("create notion error: %w", err)
 	}

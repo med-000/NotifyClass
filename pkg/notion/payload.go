@@ -3,19 +3,14 @@ package notion
 import (
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/med-000/notifyclass/db"
 )
 
-func BuildClassPayload(c db.Class) map[string]interface{} {
-	databaseID := os.Getenv("NOTION_DATABASE_ID")
-	if databaseID == "" {
-		log.Fatal("NOTION_DATABASE_ID is empty")
-	}
-
+func BuildClassPayload(databaseID string,c db.Class) map[string]interface{} {
 	day:= dayToString(c.Day)
 
 	year, term, err := parseCourseID(c.CourseID)
@@ -98,4 +93,56 @@ func parseCourseID(courseID string) (int, int, error) {
 	}
 
 	return year, term, nil
+}
+
+func BuildEventPayload(databaseID string, e EventWithRelation) map[string]interface{} {
+
+	var date map[string]interface{}
+
+	if e.StartAt != nil {
+		date = map[string]interface{}{
+			"start": e.StartAt.Format(time.RFC3339),
+		}
+	}
+
+	return map[string]interface{}{
+		"parent": map[string]interface{}{
+			"database_id": databaseID,
+		},
+		"properties": map[string]interface{}{
+			"資料名": map[string]interface{}{
+				"title": []map[string]interface{}{
+					{
+						"text": map[string]interface{}{
+							"content": e.Name,
+						},
+					},
+				},
+			},
+			"グループ": map[string]interface{}{
+				"rich_text": []map[string]interface{}{
+					{
+						"text": map[string]interface{}{
+							"content": e.Group,
+						},
+					},
+				},
+			},
+			"種類": map[string]interface{}{
+				"select": map[string]interface{}{
+					"name": e.Category,
+				},
+			},
+			"日付": map[string]interface{}{
+				"date": date,
+			},
+			"講義名": map[string]interface{}{
+				"relation": []map[string]interface{}{
+					{
+						"id": e.ClassPageID,
+					},
+				},
+			},
+		},
+	}
 }
