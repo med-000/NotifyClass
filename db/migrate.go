@@ -14,9 +14,10 @@ const (
 )
 
 type Course struct {
-	ID   string `gorm:"primaryKey"` // "2025_1"
-	Year int    `gorm:"not null"`
-	Term int    `gorm:"not null"`
+	ID string `gorm:"primaryKey"`
+
+	Year int `gorm:"not null"`
+	Term int `gorm:"not null"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -24,33 +25,30 @@ type Course struct {
 
 type Class struct {
 	ID uint `gorm:"primaryKey"`
-
 	ExternalID string `gorm:"type:varchar(64);not null"`
 
-	CourseID string `gorm:"not null;index"`
-
+	CourseID uint
+	Course   Course `gorm:"foreignKey:CourseID"`
+	
+	Title  string
 	Day    int
 	Period int
-	Title  string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 type Event struct {
 	ID uint `gorm:"primaryKey"`
-
-	ClassID uint `gorm:"not null;index"`
-
 	ExternalID string `gorm:"type:varchar(64);not null"`
 
-	Name string
+	ClassID uint
+	Class Class `gorm:"foreignKey:ClassID"`
 
+	Name string
 	Group    string
 	Category string
-
 	StartAt *time.Time
 	EndAt   *time.Time
-
 	IsDone   bool `gorm:"default:false"`
 	Notified bool `gorm:"default:false"`
 
@@ -61,9 +59,8 @@ type Event struct {
 type NotionMapping struct {
 	ID uint `gorm:"primaryKey"`
 
-	ExternalID string      `gorm:"type:varchar(128);not null;uniqueIndex:idx_external_type"`
 	Type       MappingType `gorm:"type:varchar(20);not null;uniqueIndex:idx_external_type"`
-
+	ExternalID string      `gorm:"type:varchar(128);not null;uniqueIndex:idx_external_type"`
 	NotionPageID string `gorm:"type:varchar(128);not null"`
 
 	CreatedAt time.Time
