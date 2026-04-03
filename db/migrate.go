@@ -39,7 +39,7 @@ type Class struct {
 }
 
 type Group struct {
-	ID uint `gorm:primaryKey`
+	ID uint `gorm:"primaryKey"`
 
 	ClassID uint
 	Class Class `gorm:"foeignKey:ClassID"`
