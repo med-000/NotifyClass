@@ -37,15 +37,27 @@ type Class struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type Group struct {
+	ID uint `gorm:primaryKey`
+
+	ClassID uint
+	Class Class `gorm:"foeignKey:ClassID"`
+
+	Title string
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type Event struct {
 	ID uint `gorm:"primaryKey"`
 	ExternalID string `gorm:"type:varchar(64);not null"`
 
-	ClassID uint
-	Class Class `gorm:"foreignKey:ClassID"`
+	GroupID uint
+	Group Class `gorm:"foreignKey:GroupID"`
 
 	Name string
-	Group    string
 	Category string
 	StartAt *time.Time
 	EndAt   *time.Time
