@@ -1,4 +1,4 @@
-package parser
+package scraping
 
 type Course struct {
 	Id      string

@@ -10,7 +10,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/med-000/notifyclass/db"
 	"github.com/med-000/notifyclass/pkg/repository"
-	"github.com/med-000/notifyclass/pkg/service"
+	"github.com/med-000/notifyclass/pkg/scraping"
 )
 
 func main() {
@@ -53,14 +53,14 @@ func main() {
 	for y := myyear; y <= year; y++ {
 		for term := 1; term <= 2; term++ {
 			fmt.Print(y, term)
-			req := service.GetCourseRequest{
+			req := scraping.GetCourseRequest{
 				UserID:   os.Getenv("USER_ID"),
 				Password: os.Getenv("PASSWORD"),
 				Year:     y,
 				Term:     term,
 			}
 
-			courses, err := service.FetchAll(req)
+			courses, err := scraping.FetchAll(req)
 			if err != nil {
 				log.Fatal(err)
 			}

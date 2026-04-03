@@ -2,6 +2,7 @@ package scraping
 
 import (
 	"errors"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -9,31 +10,39 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func FetchCourseHTML(c *colly.Collector, userId string, pass string, year int, term int) (string, error) {
+// FetchCourseHTML コース(講義全体)を取得
+func (s *Scraper) FetchCourseHTML(c *colly.Collector, userId string, pass string, year int, term int) (string, error) {
+
 	var html string
 	var loggedIn bool
 
+	loginURL := os.Getenv("LOGIN_URL")
+	baseURL := os.Getenv("BASE_URL")
+
+	//<scrip>タグを抽出(window.location.hrefから持ってきてる)
 	redirectRe := regexp.MustCompile(`window\.location\.href="([^"]+)"`)
 
-	loginURL := "https://els.sa.dendai.ac.jp/webclass/login.php"
-	baseURL := "https://els.sa.dendai.ac.jp"
-
+	//response来た時に呼び出される関数
 	c.OnResponse(func(r *colly.Response) {
 		body := string(r.Body)
 
-		// JSリダイレクト
+		//requestのURLの中にlogin.phpがあったら（つまり一個前の通信がlogin.phpだったら）
+		// login.phpのresponseのbodyからredirect処理を抜き出して
 		if strings.Contains(r.Request.URL.String(), "login.php") {
 			match := redirectRe.FindStringSubmatch(body)
 			if len(match) > 1 {
+				s.log.Info.Println("Get Redirect URL by login.php")
 				next := baseURL + match[1]
 				r.Request.Visit(next)
+				s.log.Info.Printf("Visit loginURL")
 				return
 			}
 		}
 
-		// ログイン成功
+		//acs=がURLにあったら(つまり、ログインできて)responseが帰ってきたら
 		if strings.Contains(r.Request.URL.String(), "acs_=") {
 			loggedIn = true
+			s.log.Info.Printf("Success Login")
 
 			// 学期変更
 			r.Request.Post(
@@ -43,17 +52,20 @@ func FetchCourseHTML(c *colly.Collector, userId string, pass string, year int, t
 					"semester": strconv.Itoa(int(term)),
 				},
 			)
+			s.log.Info.Printf("Success POST Year: %d Term: %d", year, term)
 			return
 		}
 
-		// 最終HTML
+		//index.phpに入れたら
 		if strings.Contains(r.Request.URL.String(), "index.php") {
+			s.log.Info.Printf("Success courseHTML by index.php")
 			html = body
 		}
 	})
 
 	// STEP1
 	if err := c.Visit(loginURL); err != nil {
+		s.log.Error.Printf("Cannt visit %d", loginURL)
 		return "", err
 	}
 
@@ -62,20 +74,19 @@ func FetchCourseHTML(c *colly.Collector, userId string, pass string, year int, t
 		"username": userId,
 		"val":      pass,
 	}); err != nil {
+		s.log.Error.Printf("Cannt post & login by %d", loginURL)
 		return "", err
 	}
 
-	// Clear sensitive data from memory
-	// Note: In Go, strings are immutable, so we can't directly clear the memory
-	// However, by reassigning empty strings, the original content can be garbage collected
+	//メモリからuseIdなどをを消す
 	defer func() {
-		// These reassignments allow the original data to be garbage collected faster
 		userId = ""
 		pass = ""
 	}()
 
 	if !loggedIn || html == "" {
-		return "", errors.New("failed to fetch html")
+		s.log.Error.Printf("Don`t loggedIn or scraping is empty")
+		return "", errors.New("failed to fetch scraping")
 	}
 
 	return html, nil

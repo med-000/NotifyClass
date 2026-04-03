@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/med-000/notifyclass/db"
-	"github.com/med-000/notifyclass/pkg/parser"
+	"github.com/med-000/notifyclass/pkg/parser/scraping"
 	"gorm.io/gorm"
 )
 
@@ -32,7 +32,7 @@ func parseDate(dateStr string) (*time.Time, *time.Time) {
 	return &start, &end
 }
 
-func SaveClasses(dbConn *gorm.DB, classes []*parser.Class) error {
+func SaveClasses(dbConn *gorm.DB, classes []*scraping.Class) error {
 	for _, class := range classes {
 
 		// Class
@@ -111,7 +111,7 @@ func SaveClasses(dbConn *gorm.DB, classes []*parser.Class) error {
 	return nil
 }
 
-func SaveCourse(dbConn *gorm.DB, course *parser.Course) error {
+func SaveCourse(dbConn *gorm.DB, course *scraping.Course) error {
 
 	//Course
 	c := db.Course{
@@ -190,7 +190,7 @@ func SaveCourse(dbConn *gorm.DB, course *parser.Course) error {
 	return nil
 }
 
-func changed(e db.Event, ev *parser.Event, start, end *time.Time, group string) bool {
+func changed(e db.Event, ev *scraping.Event, start, end *time.Time, group string) bool {
 
 	if e.Name != ev.Name {
 		return true

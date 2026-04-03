@@ -1,4 +1,4 @@
-package service
+package scraping
 
 type GetCourseRequest struct {
 	UserID   string `json:"userId"`

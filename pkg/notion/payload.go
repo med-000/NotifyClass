@@ -10,8 +10,8 @@ import (
 	"github.com/med-000/notifyclass/db"
 )
 
-func BuildClassPayload(databaseID string,c db.Class) map[string]interface{} {
-	day:= dayToString(c.Day)
+func BuildClassPayload(databaseID string, c db.Class) map[string]interface{} {
+	day := dayToString(c.Day)
 
 	year, term, err := parseCourseID(c.CourseID)
 	if err != nil {
