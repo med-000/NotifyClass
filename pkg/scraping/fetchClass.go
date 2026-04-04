@@ -8,7 +8,7 @@ import (
 	"github.com/gocolly/colly"
 )
 
-// FetchClassHTML FetchCourseHTMLからもらったurlをもとにclassの詳細を返す
+// FetchClassHTML FetchCourseHTMLからもらったurlをもとにclassの詳細を返す 詳細を叩く前提
 func (s *Scraper) FetchClassHTML(c *colly.Collector, url string) (string, error) {
 	var html string
 
@@ -25,7 +25,7 @@ func (s *Scraper) FetchClassHTML(c *colly.Collector, url string) (string, error)
 		// JSリダイレクト
 		match := redirectRe.FindStringSubmatch(body)
 		if len(match) > 1 {
-			s.log.Info.Println("Get Redirect URL by %d",body)
+			s.log.Info.Printf("Get Redirect URL by %s", body)
 			next := baseURL + match[1]
 			_ = r.Request.Visit(next)
 			s.log.Info.Printf("Visit classURL")
@@ -40,7 +40,7 @@ func (s *Scraper) FetchClassHTML(c *colly.Collector, url string) (string, error)
 	})
 
 	if err := cc.Visit(url); err != nil {
-		s.log.Error.Printf("Cannt visit %d",url)
+		s.log.Error.Printf("Cannt visit %s", url)
 		return "", err
 	}
 

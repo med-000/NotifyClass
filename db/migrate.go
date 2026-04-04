@@ -13,6 +13,14 @@ const (
 	MappingTypeEvent MappingType = "event"
 )
 
+type ContentType string
+
+const (
+	ContentTypePDF  ContentType = "pdf"
+	ContentTypeHTML ContentType = "html"
+	ContentTypeForm ContentType = "form"
+)
+
 type Course struct {
 	ID string `gorm:"primaryKey"`
 
@@ -24,12 +32,12 @@ type Course struct {
 }
 
 type Class struct {
-	ID uint `gorm:"primaryKey"`
+	ID         uint   `gorm:"primaryKey"`
 	ExternalID string `gorm:"type:varchar(64);not null"`
 
 	CourseID uint
 	Course   Course `gorm:"foreignKey:CourseID"`
-	
+
 	Title  string
 	Day    int
 	Period int
@@ -42,7 +50,7 @@ type Group struct {
 	ID uint `gorm:"primaryKey"`
 
 	ClassID uint
-	Class Class `gorm:"foeignKey:ClassID"`
+	Class   Class `gorm:"foeignKey:ClassID"`
 
 	Title string
 
@@ -51,18 +59,32 @@ type Group struct {
 }
 
 type Event struct {
-	ID uint `gorm:"primaryKey"`
+	ID         uint   `gorm:"primaryKey"`
 	ExternalID string `gorm:"type:varchar(64);not null"`
 
 	GroupID uint
-	Group Class `gorm:"foreignKey:GroupID"`
+	Group   Class `gorm:"foreignKey:GroupID"`
 
-	Name string
+	Name     string
 	Category string
-	StartAt *time.Time
-	EndAt   *time.Time
+	StartAt  *time.Time
+	EndAt    *time.Time
 	IsDone   bool `gorm:"default:false"`
 	Notified bool `gorm:"default:false"`
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type Content struct {
+	ID uint `gorm:"primaryKey"`
+
+	EventID uint
+	Event   Event `gorm:"foeignKey:EventID"`
+
+	Type     ContentType
+	Url      string
+	FileName string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -71,9 +93,9 @@ type Event struct {
 type NotionMapping struct {
 	ID uint `gorm:"primaryKey"`
 
-	Type       MappingType `gorm:"type:varchar(20);not null;uniqueIndex:idx_external_type"`
-	ExternalID string      `gorm:"type:varchar(128);not null;uniqueIndex:idx_external_type"`
-	NotionPageID string `gorm:"type:varchar(128);not null"`
+	Type         MappingType `gorm:"type:varchar(20);not null;uniqueIndex:idx_external_type"`
+	ExternalID   string      `gorm:"type:varchar(128);not null;uniqueIndex:idx_external_type"`
+	NotionPageID string      `gorm:"type:varchar(128);not null"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

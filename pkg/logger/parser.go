@@ -6,19 +6,19 @@ import (
 	"os"
 )
 
-type ScraperLogger struct {
+type ParserLogger struct {
 	Info  *log.Logger
 	Error *log.Logger
 	Warn  *log.Logger
 }
 
-func NewScraperLogger() (*ScraperLogger, error) {
-	if err := os.MkdirAll("logs/scraper", 0o755); err != nil {
+func NewParserLogger() (*ParserLogger, error) {
+	if err := os.MkdirAll("logs/parser", 0o755); err != nil {
 		return nil, err
 	}
 
 	infoFile, err := os.OpenFile(
-		"logs/scraper/info.log",
+		"logs/parser/info.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -27,16 +27,7 @@ func NewScraperLogger() (*ScraperLogger, error) {
 	}
 
 	errorFile, err := os.OpenFile(
-		"logs/scraper/error.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	warnFile, err := os.OpenFile(
-		"logs/scraper/warn.log",
+		"logs/parser/error.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -46,6 +37,15 @@ func NewScraperLogger() (*ScraperLogger, error) {
 
 	appFile, err := os.OpenFile(
 		"logs/app.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+		0o644,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	warnFile, err := os.OpenFile(
+		"logs/parser/warn.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -71,20 +71,20 @@ func NewScraperLogger() (*ScraperLogger, error) {
 		appFile,
 	)
 
-	return &ScraperLogger{
+	return &ParserLogger{
 		Info: log.New(
 			infoWriter,
-			Blue+"[SCRAPER]"+Green+"[INFO] "+Reset,
+			Cyan+"[PARSER]"+Green+"[INFO] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 		Error: log.New(
 			errorWriter,
-			Blue+"[SCRAPER]"+Red+"[ERROR] "+Reset,
+			Cyan+"[PARSER]"+Red+"[ERROR] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 		Warn: log.New(
 			warnWriter,
-			Blue+"[SCRAPER]"+Yellow+"[WARN] "+Reset,
+			Cyan+"[PARSER]"+Yellow+"[WARN] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 	}, nil

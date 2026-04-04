@@ -6,19 +6,19 @@ import (
 	"os"
 )
 
-type ScraperLogger struct {
+type RepositoryLogger struct {
 	Info  *log.Logger
 	Error *log.Logger
 	Warn  *log.Logger
 }
 
-func NewScraperLogger() (*ScraperLogger, error) {
-	if err := os.MkdirAll("logs/scraper", 0o755); err != nil {
+func NewRepositoryLogger() (*RepositoryLogger, error) {
+	if err := os.MkdirAll("logs/repository", 0o755); err != nil {
 		return nil, err
 	}
 
 	infoFile, err := os.OpenFile(
-		"logs/scraper/info.log",
+		"logs/repository/info.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -27,7 +27,7 @@ func NewScraperLogger() (*ScraperLogger, error) {
 	}
 
 	errorFile, err := os.OpenFile(
-		"logs/scraper/error.log",
+		"logs/repository/error.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -36,7 +36,7 @@ func NewScraperLogger() (*ScraperLogger, error) {
 	}
 
 	warnFile, err := os.OpenFile(
-		"logs/scraper/warn.log",
+		"logs/warn/info.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -52,7 +52,6 @@ func NewScraperLogger() (*ScraperLogger, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	infoWriter := io.MultiWriter(
 		os.Stdout,
 		infoFile,
@@ -71,20 +70,20 @@ func NewScraperLogger() (*ScraperLogger, error) {
 		appFile,
 	)
 
-	return &ScraperLogger{
+	return &RepositoryLogger{
 		Info: log.New(
 			infoWriter,
-			Blue+"[SCRAPER]"+Green+"[INFO] "+Reset,
+			Magenta+"[REPOSITORY]"+Green+"[INFO] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 		Error: log.New(
 			errorWriter,
-			Blue+"[SCRAPER]"+Red+"[ERROR] "+Reset,
+			Magenta+"[REPOSITORY]"+Red+"[ERROR] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 		Warn: log.New(
 			warnWriter,
-			Blue+"[SCRAPER]"+Yellow+"[WARN] "+Reset,
+			Blue+"[REPOSITORY]"+Yellow+"[WARN] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 	}, nil

@@ -27,5 +27,11 @@ type Event struct {
 	Category   string
 	Date       string
 	URL        string
-	Content    string
+	Content    []*Content
+}
+
+type Content struct {
+	Type     string
+	URL      string
+	FileName string
 }

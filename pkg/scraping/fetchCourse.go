@@ -65,7 +65,7 @@ func (s *Scraper) FetchCourseHTML(c *colly.Collector, userId string, pass string
 
 	// STEP1
 	if err := c.Visit(loginURL); err != nil {
-		s.log.Error.Printf("Cannt visit %d", loginURL)
+		s.log.Error.Printf("Cannt visit %s", loginURL)
 		return "", err
 	}
 
@@ -74,7 +74,7 @@ func (s *Scraper) FetchCourseHTML(c *colly.Collector, userId string, pass string
 		"username": userId,
 		"val":      pass,
 	}); err != nil {
-		s.log.Error.Printf("Cannt post & login by %d", loginURL)
+		s.log.Error.Printf("Cannt post & login by %s", loginURL)
 		return "", err
 	}
 

@@ -6,7 +6,7 @@ type Parser struct {
 	log *logger.ParserLogger
 }
 
-func NewScraper(log *logger.ParserLogger) *Parser {
+func NewParser(log *logger.ParserLogger) *Parser {
 	return &Parser{
 		log: log,
 	}

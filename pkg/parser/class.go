@@ -7,7 +7,7 @@ import (
 )
 
 // ParseClass course.phpのhtml専用
-func (p *Parser) ParseClass(html string) *Class {
+func (p *Parser) ParserClass(html string) *Class {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		p.log.Error.Printf("Cannt Read Html \n Error Detail:%s", err)
@@ -56,7 +56,7 @@ func (p *Parser) ParseClass(html string) *Class {
 				if link == "" {
 					p.log.Error.Printf("Link is nil")
 				}
-				p.log.Error.Printf("Debug watch %s", fullURL)
+				p.log.Info.Printf("Debug watch %s", fullURL)
 			}
 
 			e := &Event{

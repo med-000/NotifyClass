@@ -5,66 +5,109 @@ import (
 	"os"
 
 	"github.com/gocolly/colly"
-	"github.com/med-000/notifyclass/pkg/parser/scraping"
+	"github.com/med-000/notifyclass/pkg/logger"
+	"github.com/med-000/notifyclass/pkg/parser"
 )
 
-func (s *Scraper) FetchAll(req GetCourseRequest) (*scraping.Course, error) {
+func (s *Scraper) FetchAll(req GetCourseRequest) (*parser.Course, error) {
 	allowdomain := os.Getenv("ALLOW_DOMAIN")
 
-	//collyのinit
 	c := colly.NewCollector(
 		colly.AllowedDomains(allowdomain),
 	)
 
-	//受け取ったrequestからhtmlを取得
-	html, err := s.FetchCourseHTML(c, req.UserID, req.Password, req.Year, req.Term)
+	parserlogger, _ := logger.NewParserLogger()
+	p := parser.NewParser(parserlogger)
+
+	s.log.Info.Printf("start FetchAll user=%s year=%d term=%d", req.UserID, req.Year, req.Term)
+
+	coursehtml, err := s.FetchCourseHTML(c, req.UserID, req.Password, req.Year, req.Term)
 	if err != nil {
-		s.log.Error.Printf("Not Get CourseHTML! error detail:%d", err)
+		s.log.Error.Printf("failed FetchCourseHTML: %v", err)
 		return nil, err
 	}
-	s.log.Info.Printf("Success Get CourseHTML!")
+	s.log.Info.Printf("fetched course html")
 
-	classes := scraping.ParseCourses(html)
-	s.log.Info.Printf("Success Parser CourseHTML!")
+	courses := p.ParseCourse(coursehtml)
+	if courses == nil {
+		s.log.Error.Printf("ParseCourse returned nil")
+		return nil, fmt.Errorf("parse course failed")
+	}
 
-	//courseIDのフォーマット変換
+	classes := courses.Classes
+	s.log.Info.Printf("parsed course classes=%d", len(classes))
+
 	courseID := makeCourseID(req.Year, req.Term)
 
-	var result []*scraping.Class
+	var classresult []*parser.Class
 
-	//classesを展開してその数だけ継続(course内にあった講義数分中のものを取得してappend)
 	for i := range classes {
+		s.log.Info.Printf("fetch class[%d] title=%s url=%s", i, classes[i].Title, classes[i].URL)
+
 		classhtml, err := s.FetchClassHTML(c, classes[i].URL)
 		if err != nil {
-			s.log.Error.Printf("Failed FetchClassHTML! error detail:%d", err)
+			s.log.Error.Printf("failed FetchClassHTML index=%d url=%s err=%v", i, classes[i].URL, err)
 			continue
 		}
 
-		class := scraping.ParseClass(classhtml)
+		class := p.ParserClass(classhtml)
 		if class == nil {
-			s.log.Info.Printf("classhtml is nil")
+			s.log.Error.Printf("ParserClass returned nil index=%d url=%s", i, classes[i].URL)
 			continue
 		}
 
-		result = append(result, &scraping.Class{
-			Id:     classes[i].Id,
-			Day:    classes[i].Day,
-			Period: classes[i].Period,
-			Title:  classes[i].Title,
-			URL:    classes[i].URL,
-			Groups: class.Groups,
+		var eventCount int
+		var contentSuccess int
+
+		for gi, g := range class.Groups {
+			for ei, e := range g.Events {
+				eventCount++
+
+				if e.URL == "" {
+					s.log.Warn.Printf("skip empty event url class=%d group=%d event=%d", i, gi, ei)
+					continue
+				}
+
+				contenthtml, err := s.FetchContentHTML(c, e.URL)
+				if err != nil {
+					s.log.Error.Printf("failed FetchContentHTML class=%d group=%d event=%d url=%s err=%v", i, gi, ei, e.URL, err)
+					continue
+				}
+
+				contents, err := p.ParserContent(contenthtml)
+				if err != nil {
+					s.log.Error.Printf("failed ParseContent class=%d group=%d event=%d url=%s err=%v", i, gi, ei, e.URL, err)
+					continue
+				}
+
+				e.Content = contents
+				contentSuccess++
+			}
+		}
+
+		s.log.Info.Printf("class parsed index=%d title=%s events=%d contents_attached=%d", i, classes[i].Title, eventCount, contentSuccess)
+
+		classresult = append(classresult, &parser.Class{
+			ExternalId: classes[i].ExternalId,
+			Day:        classes[i].Day,
+			Period:     classes[i].Period,
+			Title:      classes[i].Title,
+			URL:        classes[i].URL,
+			Groups:     class.Groups,
 		})
 	}
 
-	return &scraping.Course{
-		Id:      courseID,
-		Year:    req.Year,
-		Term:    req.Term,
-		Classes: result,
+	s.log.Info.Printf("FetchAll completed classes=%d", len(classresult))
+
+	return &parser.Course{
+		ExternalId: courseID,
+		Year:       req.Year,
+		Term:       req.Term,
+		Classes:    classresult,
 	}, nil
 }
 
-//CourseIDの変換関数
+// CourseIDの変換関数
 func makeCourseID(year int, term int) string {
 	return fmt.Sprintf("%d_%d", year, term)
 }
