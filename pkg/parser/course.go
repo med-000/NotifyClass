@@ -99,11 +99,17 @@ func (p *Parser) ParseCourse(html string) *Course {
 }
 
 // titleの不要な部分を削る
-func titleTrimmer(title string) string {
-	re := regexp.MustCompile(`$begin:math:text$\[\^\)\]\*$end:math:text$`)
-	title = re.ReplaceAllString(title, "")
-	title = strings.TrimSpace(title)
-	return title
+var trailingCodeRe = regexp.MustCompile(`$begin:math:text$\[\^\)\]\*$end:math:text$$`)
+
+func titleTrimmer(s string) string {
+	s = strings.TrimPrefix(s, "» ")
+	s = strings.TrimSpace(s)
+
+	if idx := strings.Index(s, "("); idx != -1 {
+		s = s[:idx]
+	}
+
+	return strings.TrimSpace(s)
 }
 
 // courseIDを切り取る
