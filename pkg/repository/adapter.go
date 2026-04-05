@@ -26,22 +26,15 @@ func ToDBClass(c *parser.Class, courseID uint) *db.Class {
 	}
 }
 
-func ToDBGroup(g *parser.Group, classID uint) *db.Group {
-	return &db.Group{
-		ExternalID: g.ExternalId,
-		ClassID:    classID,
-		Title:      g.Name,
-	}
-}
-
-func ToDBEvent(e *parser.Event, groupID uint) *db.Event {
+func ToDBEvent(e *parser.Event, classID uint) *db.Event {
 	start, end := parseDate(e.Date)
 
 	return &db.Event{
 		ExternalID: e.ExternalId,
-		GroupID:    groupID,
+		ClassID:    classID,
 		Name:       e.Name,
 		Category:   e.Category,
+		GroupName:  e.GroupName,
 		StartAt:    start,
 		EndAt:      end,
 	}

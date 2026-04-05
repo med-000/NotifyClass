@@ -29,18 +29,6 @@ func NewClassRepository(db *gorm.DB, log *logger.RepositoryLogger) *ClassReposit
 	}
 }
 
-type GroupRepository struct {
-	db  *gorm.DB
-	log *logger.RepositoryLogger
-}
-
-func NewGroupRepository(db *gorm.DB, log *logger.RepositoryLogger) *GroupRepository {
-	return &GroupRepository{
-		db:  db,
-		log: log,
-	}
-}
-
 type EventRepository struct {
 	db  *gorm.DB
 	log *logger.RepositoryLogger

@@ -48,37 +48,23 @@ type Class struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	Groups []Group `gorm:"foreignKey:ClassID"`
-}
-
-type Group struct {
-	ID         uint   `gorm:"primaryKey"`
-	ExternalID string `gorm:"type:varchar(64);not null;uniqueIndex"`
-
-	ClassID uint
-	Class   Class `gorm:"foreignKey:ClassID"`
-
-	Title string
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-
-	Events []Event `gorm:"foreignKey:GroupID"`
+	Events []Event `gorm:"foreignKey:ClassID"`
 }
 
 type Event struct {
 	ID         uint   `gorm:"primaryKey"`
 	ExternalID string `gorm:"type:varchar(64);not null;uniqueIndex"`
 
-	GroupID uint
-	Group   Group `gorm:"foreignKey:GroupID"`
+	ClassID uint
+	Class   Class `gorm:"foreignKey:ClassID"`
 
-	Name     string
-	Category string
-	StartAt  *time.Time
-	EndAt    *time.Time
-	IsDone   bool `gorm:"default:false"`
-	Notified bool `gorm:"default:false"`
+	Name      string
+	Category  string
+	GroupName string `gorm:"type:varchar(255);index"`
+	StartAt   *time.Time
+	EndAt     *time.Time
+	IsDone    bool `gorm:"default:false"`
+	Notified  bool `gorm:"default:false"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -115,7 +101,6 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&Course{},
 		&Class{},
-		&Group{},
 		&Event{},
 		&Content{},
 		&NotionMapping{},

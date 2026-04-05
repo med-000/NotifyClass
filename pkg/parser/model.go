@@ -15,12 +15,6 @@ type Class struct {
 	Period     int
 	Title      string
 	URL        string
-	Groups     []*Group
-}
-
-type Group struct {
-	ExternalId string
-	Name       string
 	Events     []*Event
 }
 
@@ -30,6 +24,7 @@ type Event struct {
 	Category   string
 	Date       string
 	URL        string
+	GroupName  string
 	Content    []*Content
 }
 

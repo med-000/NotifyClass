@@ -63,30 +63,28 @@ func (s *Service) FetchAll(req GetCourseRequest) (*parser.Course, error) {
 		var eventCount int
 		var contentSuccess int
 
-		for gi, g := range class.Groups {
-			for ei, e := range g.Events {
-				eventCount++
+		for ei, e := range class.Events {
+			eventCount++
 
-				if e.URL == "" {
-					s.log.Warn.Printf("skip empty event url class=%d group=%d event=%d", i, gi, ei)
-					continue
-				}
-
-				contenthtml, err := sc.FetchContentHTML(c, e.URL)
-				if err != nil {
-					s.log.Error.Printf("failed FetchContentHTML class=%d group=%d event=%d url=%s err=%v", i, gi, ei, e.URL, err)
-					continue
-				}
-
-				contents, err := p.ParserContent(contenthtml)
-				if err != nil {
-					s.log.Error.Printf("failed ParseContent class=%d group=%d event=%d url=%s err=%v", i, gi, ei, e.URL, err)
-					continue
-				}
-
-				e.Content = contents
-				contentSuccess++
+			if e.URL == "" {
+				s.log.Warn.Printf("skip empty event url class=%d event=%d", i, ei)
+				continue
 			}
+
+			contenthtml, err := sc.FetchContentHTML(c, e.URL)
+			if err != nil {
+				s.log.Error.Printf("failed FetchContentHTML class=%d event=%d url=%s err=%v", i, ei, e.URL, err)
+				continue
+			}
+
+			contents, err := p.ParserContent(contenthtml)
+			if err != nil {
+				s.log.Error.Printf("failed ParseContent class=%d event=%d url=%s err=%v", i, ei, e.URL, err)
+				continue
+			}
+
+			e.Content = contents
+			contentSuccess++
 		}
 
 		s.log.Info.Printf("class parsed index=%d title=%s events=%d contents_attached=%d", i, classes[i].Title, eventCount, contentSuccess)
@@ -97,7 +95,7 @@ func (s *Service) FetchAll(req GetCourseRequest) (*parser.Course, error) {
 			Period:     classes[i].Period,
 			Title:      classes[i].Title,
 			URL:        classes[i].URL,
-			Groups:     class.Groups,
+			Events:     class.Events,
 		})
 	}
 
@@ -113,5 +111,5 @@ func (s *Service) FetchAll(req GetCourseRequest) (*parser.Course, error) {
 
 // CourseIDの変換関数
 func makeCourseID(year int, term int) string {
-	return fmt.Sprintf("%d%d", year, term)
+	return fmt.Sprintf("%d_%d", year, term)
 }

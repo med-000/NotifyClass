@@ -14,40 +14,32 @@ func (p *Parser) ParserClass(html string) *Class {
 		return nil
 	}
 
-	//class宣言とpageからClassName取得
 	class := &Class{
 		Title: strings.TrimSpace(
 			doc.Find("a.course-name").First().Text(),
 		),
-		Groups: []*Group{},
+		Events: []*Event{},
 	}
 
-	//folderからgroup取得
+	// folder（group）ごとに回す
 	doc.Find(".cl-contentsList_folder").Each(func(i int, folder *goquery.Selection) {
-		groupID, exists := folder.Attr("id")
-		if !exists {
-			p.log.Error.Printf("Not found id")
-			return
-		}
-		//groupNameを打ち込む
-		g := &Group{
-			ExternalId: groupID,
-			Name:       strings.TrimSpace(folder.Find(".panel-title").Text()),
-			Events:     []*Event{},
-		}
 
-		//group内のeventを入れる
+		groupName := strings.TrimSpace(folder.Find(".panel-title").Text())
+
+		// eventを回す
 		folder.Find(".cl-contentsList_listGroupItem").Each(func(j int, item *goquery.Selection) {
+
 			name := strings.TrimSpace(item.Find(".cm-contentsList_contentName").Text())
 			category := strings.TrimSpace(item.Find(".cl-contentsList_categoryLabel").Text())
 			date := strings.TrimSpace(item.Find(".cm-contentsList_contentDetailListItemData").Text())
+
 			var id string
 			var fullURL string
 
+			// id取得
 			if a := item.Find(".cl-contentsList_contentDetailListItemData a"); a.Length() > 0 {
 				href, _ := a.Attr("href")
 
-				//contentのidを取得
 				parts := strings.Split(href, "/contents/")
 				if len(parts) > 1 {
 					id = strings.Split(parts[1], "/")[0]
@@ -56,27 +48,28 @@ func (p *Parser) ParserClass(html string) *Class {
 					}
 				}
 			}
+
+			// URL取得
 			if a := item.Find(".cl-contentsList_contentInfo a"); a.Length() > 0 {
 				link, _ := a.Attr("href")
-				fullURL = "https://els.sa.dendai.ac.jp" + link
-				if link == "" {
+				if link != "" {
+					fullURL = "https://els.sa.dendai.ac.jp" + link
+				} else {
 					p.log.Error.Printf("Link is nil")
 				}
-				p.log.Info.Printf("Debug watch %s", fullURL)
 			}
 
+			// Event生成
 			e := &Event{
 				ExternalId: id,
 				Name:       name,
 				Category:   category,
 				URL:        fullURL,
 				Date:       date,
+				GroupName:  groupName,
 			}
-
-			g.Events = append(g.Events, e)
+			class.Events = append(class.Events, e)
 		})
-
-		class.Groups = append(class.Groups, g)
 	})
 
 	return class
