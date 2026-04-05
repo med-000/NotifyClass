@@ -2,10 +2,12 @@ package db
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func NewDB() (*gorm.DB, error) {
@@ -19,5 +21,15 @@ func NewDB() (*gorm.DB, error) {
 		user, password, host, port, database,
 	)
 
-	return gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	newLogger := logger.New(
+		log.New(os.Stdout, "", log.LstdFlags),
+		logger.Config{
+			LogLevel:                  logger.Warn, 
+			IgnoreRecordNotFoundError: true,
+		},
+	)
+
+	return gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: newLogger,
+	})
 }
