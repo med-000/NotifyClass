@@ -4,23 +4,17 @@ import (
 	"errors"
 
 	"github.com/med-000/notifyclass/db"
-	"github.com/med-000/notifyclass/pkg/parser"
 	"gorm.io/gorm"
 )
 
-func (r *CourseRepository) Save(c *parser.Course) error {
+func (r *CourseRepository) Save(c *db.Course) error {
 	var existing db.Course
 
-	err := r.db.Where("external_id = ?", c.ExternalId).First(&c).Error
+	err := r.db.Where("external_id = ?", c.ExternalID).First(&c).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		newCourse := db.Course{
-			ExternalID: c.ExternalId,
-			Year:       c.Year,
-			Term:       c.Term,
-		}
 
-		r.log.Info.Printf("Create course external_id=%s", c.ExternalId)
-		return r.db.Create(&newCourse).Error
+		r.log.Info.Printf("Create course external_id=%s", c.ExternalID)
+		return r.db.Create(&c).Error
 
 	} else if err != nil {
 		r.log.Error.Printf("Save Error:,%v", err)
@@ -31,7 +25,7 @@ func (r *CourseRepository) Save(c *parser.Course) error {
 	existing.Term = c.Term
 	existing.Year = c.Year
 
-	r.log.Info.Printf("Update couse existing_id=%d", c.ExternalId)
+	r.log.Info.Printf("Update couse existing_id=%d", c.ExternalID)
 	return r.db.Save(&existing).Error
 
 }

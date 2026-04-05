@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/med-000/notifyclass/db"
-	"github.com/med-000/notifyclass/pkg/parser"
 	"gorm.io/gorm"
 )
 
@@ -29,21 +28,14 @@ func (r *ClassRepository) FindByExternalID(externalID string) (*db.Class, error)
 }
 
 // saveする
-func (r *ClassRepository) Save(c *parser.Class) error {
+func (r *ClassRepository) Save(c *db.Class) error {
 	var existing db.Class
 
-	err := r.db.Where("external_id = ?", c.ExternalId).First(&existing).Error
+	err := r.db.Where("external_id = ?", c.ExternalID).First(&existing).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		newClass := db.Class{
-			ExternalID: c.ExternalId,
-			Day:        c.Day,
-			Period:     c.Period,
-			Title:      c.Title,
-		}
-
-		r.log.Info.Printf("Create class external_id=%s", c.ExternalId)
-		return r.db.Create(&newClass).Error
+		r.log.Info.Printf("Create class external_id=%s", c.ExternalID)
+		return r.db.Create(&c).Error
 
 	} else if err != nil {
 		r.log.Error.Printf("Save Error: %v", err)
@@ -55,6 +47,6 @@ func (r *ClassRepository) Save(c *parser.Class) error {
 	existing.Period = c.Period
 	existing.Title = c.Title
 
-	r.log.Info.Printf("Update class external_id=%s", c.ExternalId)
+	r.log.Info.Printf("Update class external_id=%s", c.ExternalID)
 	return r.db.Save(&existing).Error
 }
