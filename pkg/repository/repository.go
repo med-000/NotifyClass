@@ -10,8 +10,11 @@ type CourseRepository struct {
 	log *logger.RepositoryLogger
 }
 
-func NewCourseRepository(db *gorm.DB) *ClassRepository {
-	return &ClassRepository{db: db}
+func NewCourseRepository(db *gorm.DB, log *logger.RepositoryLogger) *CourseRepository {
+	return &CourseRepository{
+		db:  db,
+		log: log,
+	}
 }
 
 type ClassRepository struct {
@@ -19,8 +22,11 @@ type ClassRepository struct {
 	log *logger.RepositoryLogger
 }
 
-func NewClassRepository(db *gorm.DB) *ClassRepository {
-	return &ClassRepository{db: db}
+func NewClassRepository(db *gorm.DB, log *logger.RepositoryLogger) *ClassRepository {
+	return &ClassRepository{
+		db:  db,
+		log: log,
+	}
 }
 
 type GroupRepository struct {
@@ -28,8 +34,11 @@ type GroupRepository struct {
 	log *logger.RepositoryLogger
 }
 
-func NewGroupRepository(db *gorm.DB) *GroupRepository {
-	return &GroupRepository{db: db}
+func NewGroupRepository(db *gorm.DB, log *logger.RepositoryLogger) *GroupRepository {
+	return &GroupRepository{
+		db:  db,
+		log: log,
+	}
 }
 
 type EventRepository struct {
@@ -37,8 +46,11 @@ type EventRepository struct {
 	log *logger.RepositoryLogger
 }
 
-func NewEventRepository(db *gorm.DB) *ClassRepository {
-	return &ClassRepository{db: db}
+func NewEventRepository(db *gorm.DB, log *logger.RepositoryLogger) *EventRepository {
+	return &EventRepository{
+		db:  db,
+		log: log,
+	}
 }
 
 type ContentRepository struct {
@@ -46,8 +58,11 @@ type ContentRepository struct {
 	log *logger.RepositoryLogger
 }
 
-func NewContentRepository(db *gorm.DB) *ContentRepository {
-	return &ContentRepository{db: db}
+func NewContentRepository(db *gorm.DB, log *logger.RepositoryLogger) *ContentRepository {
+	return &ContentRepository{
+		db:  db,
+		log: log,
+	}
 }
 
 type NotionMappingRepository struct {
@@ -55,6 +70,9 @@ type NotionMappingRepository struct {
 	log *logger.RepositoryLogger
 }
 
-func NewNotionMappingRepository(db *gorm.DB) *ClassRepository {
-	return &ClassRepository{db: db}
+func NewNotionMappingRepository(db *gorm.DB, log *logger.RepositoryLogger) *NotionMappingRepository {
+	return &NotionMappingRepository{
+		db:  db,
+		log: log,
+	}
 }
