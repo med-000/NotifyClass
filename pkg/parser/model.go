@@ -1,5 +1,7 @@
 package parser
 
+import "github.com/med-000/notifyclass/db"
+
 type Course struct {
 	ExternalId string
 	Year       int
@@ -17,8 +19,9 @@ type Class struct {
 }
 
 type Group struct {
-	Name   string
-	Events []*Event
+	ExternalId string
+	Name       string
+	Events     []*Event
 }
 
 type Event struct {
@@ -31,7 +34,7 @@ type Event struct {
 }
 
 type Content struct {
-	Type     string
-	URL      string
-	FileName string
+	ContentType db.ContentType
+	URL         string
+	FileName    string
 }

@@ -2,14 +2,46 @@ package repository
 
 import (
 	"errors"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/med-000/notifyclass/db"
-	"github.com/med-000/notifyclass/pkg/parser/scraping"
+	"github.com/med-000/notifyclass/pkg/parser"
 	"gorm.io/gorm"
 )
+
+func (r *EventRepository) Save(e *parser.Event) error {
+	var existing db.Event
+
+	err := r.db.Where("external_id = ?", e.ExternalId).First(&e).Error
+	start, end := parseDate(e.Date)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		newEvent := db.Event{
+			ExternalID: e.ExternalId,
+			Name:       e.Name,
+			Category:   e.Category,
+			StartAt:    start,
+			EndAt:      end,
+		}
+
+		r.log.Info.Printf("Create event external_id=%s", e.ExternalId)
+		return r.db.Create(&newEvent).Error
+
+	} else if err != nil {
+		r.log.Error.Printf("Save Error:,%v", err)
+		return err
+	}
+
+	// update
+	existing.Name = e.Name
+	existing.Category = e.Category
+	existing.StartAt = start
+	existing.EndAt = end
+
+	r.log.Info.Printf("Update couse existing_id=%d", e.ExternalId)
+	return r.db.Save(&existing).Error
+
+}
 
 func parseDate(dateStr string) (*time.Time, *time.Time) {
 	if dateStr == "" {
@@ -30,194 +62,4 @@ func parseDate(dateStr string) (*time.Time, *time.Time) {
 	}
 
 	return &start, &end
-}
-
-func SaveClasses(dbConn *gorm.DB, classes []*scraping.Class) error {
-	for _, class := range classes {
-
-		// Class
-		var dbclass db.Class
-
-		err := dbConn.
-			Where("external_id = ?", class.Id).
-			First(&dbclass).Error
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			dbclass = db.Class{
-				ExternalID: class.Id,
-				Day:        class.Day,
-				Period:     class.Period,
-				Title:      class.Title,
-			}
-			if err := dbConn.Create(&dbclass).Error; err != nil {
-				return err
-			}
-		} else if err != nil {
-			return err
-		}
-
-		// Event
-		for _, group := range class.Groups {
-			for _, ev := range group.Events {
-				if ev.Id == "" {
-					log.Println("not found Id")
-					continue
-				}
-
-				start, end := parseDate(ev.Date)
-
-				event := db.Event{
-					ClassID:    dbclass.ID,
-					ExternalID: ev.Id,
-					Name:       ev.Name,
-					Group:      group.Name,
-					Category:   ev.Category,
-					StartAt:    start,
-					EndAt:      end,
-				}
-
-				err := dbConn.
-					Where("external_id = ?", ev.Id).
-					FirstOrCreate(&event).Error
-
-				if err != nil {
-					log.Println("insert error:", err)
-					continue
-				}
-
-				// 更新検知
-				var existing db.Event
-				if err := dbConn.Where("external_id = ?", ev.Id).First(&existing).Error; err == nil {
-
-					if changed(existing, ev, start, end, group.Name) {
-
-						update := map[string]interface{}{
-							"name":     ev.Name,
-							"group":    group.Name,
-							"category": ev.Category,
-							"start_at": start,
-							"end_at":   end,
-							"notified": false,
-						}
-
-						if err := dbConn.Model(&existing).Updates(update).Error; err != nil {
-							log.Println("update error:", err)
-						}
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func SaveCourse(dbConn *gorm.DB, course *scraping.Course) error {
-
-	//Course
-	c := db.Course{
-		ID:   course.Id,
-		Year: course.Year,
-		Term: course.Term,
-	}
-
-	if err := dbConn.FirstOrCreate(&c, db.Course{ID: c.ID}).Error; err != nil {
-		return err
-	}
-
-	//Class
-	for _, class := range course.Classes {
-
-		var existing db.Class
-
-		err := dbConn.
-			Where("external_id = ? AND course_id = ?", class.Id, course.Id).
-			First(&existing).Error
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			newClass := db.Class{
-				ExternalID: class.Id,
-				CourseID:   course.Id,
-				Day:        class.Day,
-				Period:     class.Period,
-				Title:      class.Title,
-			}
-
-			if err := dbConn.Create(&newClass).Error; err != nil {
-				return err
-			}
-
-			existing = newClass
-
-		} else if err != nil {
-			return err
-		}
-
-		//Event
-		for _, group := range class.Groups {
-			for _, ev := range group.Events {
-
-				if ev.Id == "" {
-					continue
-				}
-
-				start, end := parseDate(ev.Date)
-
-				var existingEvent db.Event
-
-				err := dbConn.
-					Where("external_id = ? AND class_id = ?", ev.Id, existing.ID).
-					First(&existingEvent).Error
-
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					event := db.Event{
-						ClassID:    existing.ID,
-						ExternalID: ev.Id,
-						Name:       ev.Name,
-						Group:      group.Name,
-						Category:   ev.Category,
-						StartAt:    start,
-						EndAt:      end,
-					}
-
-					if err := dbConn.Create(&event).Error; err != nil {
-						return err
-					}
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func changed(e db.Event, ev *scraping.Event, start, end *time.Time, group string) bool {
-
-	if e.Name != ev.Name {
-		return true
-	}
-	if e.Group != group {
-		return true
-	}
-	if e.Category != ev.Category {
-		return true
-	}
-
-	if !timeEqual(e.StartAt, start) {
-		return true
-	}
-	if !timeEqual(e.EndAt, end) {
-		return true
-	}
-
-	return false
-}
-
-func timeEqual(a, b *time.Time) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return a.Equal(*b)
 }

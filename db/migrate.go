@@ -22,7 +22,8 @@ const (
 )
 
 type Course struct {
-	ID string `gorm:"primaryKey"`
+	ID         string `gorm:"primaryKey"`
+	ExternalID string `gorm:"type:varchar(64);not null"`
 
 	Year int `gorm:"not null"`
 	Term int `gorm:"not null"`
@@ -47,7 +48,8 @@ type Class struct {
 }
 
 type Group struct {
-	ID uint `gorm:"primaryKey"`
+	ID         uint   `gorm:"primaryKey"`
+	ExternalID string `gorm:"type:varchar(64);not null"`
 
 	ClassID uint
 	Class   Class `gorm:"foeignKey:ClassID"`
@@ -82,9 +84,9 @@ type Content struct {
 	EventID uint
 	Event   Event `gorm:"foeignKey:EventID"`
 
-	Type     ContentType
-	Url      string
-	FileName string
+	CotentType ContentType
+	URL        string
+	FileName   string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

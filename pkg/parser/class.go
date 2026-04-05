@@ -24,10 +24,16 @@ func (p *Parser) ParserClass(html string) *Class {
 
 	//folderからgroup取得
 	doc.Find(".cl-contentsList_folder").Each(func(i int, folder *goquery.Selection) {
+		groupID, exists := folder.Attr("id")
+		if !exists {
+			p.log.Error.Printf("Not found id")
+			return
+		}
 		//groupNameを打ち込む
 		g := &Group{
-			Name:   strings.TrimSpace(folder.Find(".panel-title").Text()),
-			Events: []*Event{},
+			ExternalId: groupID,
+			Name:       strings.TrimSpace(folder.Find(".panel-title").Text()),
+			Events:     []*Event{},
 		}
 
 		//group内のeventを入れる
