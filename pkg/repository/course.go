@@ -25,7 +25,7 @@ func (r *CourseRepository) Save(c *db.Course) error {
 	existing.Term = c.Term
 	existing.Year = c.Year
 
-	r.log.Info.Printf("Update couse existing_id=%d", c.ExternalID)
+	r.log.Info.Printf("Update couse existing_id=%s", c.ExternalID)
 	return r.db.Save(&existing).Error
 
 }
