@@ -16,7 +16,7 @@ func (r *EventRepository) Save(e *db.Event) error {
 		r.log.Info.Printf("Create event external_id=%s", e.ExternalID)
 		return r.db.Create(e).Error
 	}
-	
+
 	if err != nil {
 		r.log.Error.Printf("Save Error:,%v", err)
 		return err

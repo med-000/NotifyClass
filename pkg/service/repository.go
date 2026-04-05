@@ -9,11 +9,11 @@ import (
 
 func (s *Service) SaveAll(dbConn *gorm.DB, course *parser.Course) error {
 	repositoryLogger, _ := logger.NewRepositoryLogger()
-	courseRepo := repository.NewCourseRepository(dbConn,repositoryLogger)
-	classRepo := repository.NewClassRepository(dbConn,repositoryLogger)
-	groupRepo := repository.NewGroupRepository(dbConn,repositoryLogger)
-	eventRepo := repository.NewEventRepository(dbConn,repositoryLogger)
-	contentRepo := repository.NewContentRepository(dbConn,repositoryLogger)
+	courseRepo := repository.NewCourseRepository(dbConn, repositoryLogger)
+	classRepo := repository.NewClassRepository(dbConn, repositoryLogger)
+	groupRepo := repository.NewGroupRepository(dbConn, repositoryLogger)
+	eventRepo := repository.NewEventRepository(dbConn, repositoryLogger)
+	contentRepo := repository.NewContentRepository(dbConn, repositoryLogger)
 
 	dbCourse := repository.ToDBCourse(course)
 	err := courseRepo.Save(dbCourse)
@@ -24,28 +24,28 @@ func (s *Service) SaveAll(dbConn *gorm.DB, course *parser.Course) error {
 	s.log.Info.Printf("save course")
 
 	for _, class := range course.Classes {
-		dbClass := repository.ToDBClass(class,dbCourse.ID)
+		dbClass := repository.ToDBClass(class, dbCourse.ID)
 		err := classRepo.Save(dbClass)
 		if err != nil {
 			s.log.Error.Printf("defined class save err:%s", err)
 			return err
 		}
 		for _, group := range class.Groups {
-			dbGroup := repository.ToDBGroup(group,dbClass.ID)
+			dbGroup := repository.ToDBGroup(group, dbClass.ID)
 			err := groupRepo.Save(dbGroup)
 			if err != nil {
 				s.log.Error.Printf("defined group save err:%s", err)
 				return err
 			}
 			for _, event := range group.Events {
-				dbEvent := repository.ToDBEvent(event,dbGroup.ID)
+				dbEvent := repository.ToDBEvent(event, dbGroup.ID)
 				err := eventRepo.Save(dbEvent)
 				if err != nil {
 					s.log.Error.Printf("defined event save err:%s", err)
 					return err
 				}
 				for _, content := range event.Content {
-					dbContent := repository.ToDBContent(content,dbEvent.ID)
+					dbContent := repository.ToDBContent(content, dbEvent.ID)
 					err := contentRepo.Save(dbContent)
 					if err != nil {
 						s.log.Error.Printf("defined content save err:%s", err)

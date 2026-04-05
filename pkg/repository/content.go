@@ -15,7 +15,7 @@ func (r *ContentRepository) Save(c *db.Content) error {
 		r.log.Info.Printf("Create cotent url=%s", c.URL)
 		return r.db.Create(c).Error
 
-	} 
+	}
 	if err != nil {
 		r.log.Error.Printf("Save Error:,%v", err)
 		return err

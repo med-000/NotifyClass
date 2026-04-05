@@ -15,7 +15,7 @@ func (r *CourseRepository) Save(c *db.Course) error {
 		r.log.Info.Printf("Create course external_id=%s", c.ExternalID)
 		return r.db.Create(c).Error
 
-	} 
+	}
 	if err != nil {
 		r.log.Error.Printf("Save Error:,%v", err)
 		return err
