@@ -10,13 +10,13 @@ import (
 func (r *CourseRepository) Save(c *db.Course) error {
 	var existing db.Course
 
-	err := r.db.Where("external_id = ?", c.ExternalID).First(&c).Error
+	err := r.db.Where("external_id = ?", c.ExternalID).First(&existing).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-
 		r.log.Info.Printf("Create course external_id=%s", c.ExternalID)
-		return r.db.Create(&c).Error
+		return r.db.Create(c).Error
 
-	} else if err != nil {
+	} 
+	if err != nil {
 		r.log.Error.Printf("Save Error:,%v", err)
 		return err
 	}

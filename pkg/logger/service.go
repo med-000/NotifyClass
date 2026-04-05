@@ -6,19 +6,19 @@ import (
 	"os"
 )
 
-type RepositoryLogger struct {
+type ServiceLogger struct {
 	Info  *log.Logger
 	Error *log.Logger
 	Warn  *log.Logger
 }
 
-func NewRepositoryLogger() (*RepositoryLogger, error) {
-	if err := os.MkdirAll("logs/repository", 0o755); err != nil {
+func NewServiceLogger() (*ServiceLogger, error) {
+	if err := os.MkdirAll("logs/Service", 0o755); err != nil {
 		return nil, err
 	}
 
 	infoFile, err := os.OpenFile(
-		"logs/repository/info.log",
+		"logs/Service/info.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -27,7 +27,7 @@ func NewRepositoryLogger() (*RepositoryLogger, error) {
 	}
 
 	errorFile, err := os.OpenFile(
-		"logs/repository/error.log",
+		"logs/Service/error.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -36,7 +36,7 @@ func NewRepositoryLogger() (*RepositoryLogger, error) {
 	}
 
 	warnFile, err := os.OpenFile(
-		"logs/repository/warn.log",
+		"logs/Service/warn.log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o644,
 	)
@@ -52,6 +52,7 @@ func NewRepositoryLogger() (*RepositoryLogger, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	infoWriter := io.MultiWriter(
 		os.Stdout,
 		infoFile,
@@ -70,20 +71,20 @@ func NewRepositoryLogger() (*RepositoryLogger, error) {
 		appFile,
 	)
 
-	return &RepositoryLogger{
+	return &ServiceLogger{
 		Info: log.New(
 			infoWriter,
-			Magenta+"[REPOSITORY]"+Green+"[INFO] "+Reset,
+			BrightBlue+"[SERVICE]"+Green+"[INFO] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 		Error: log.New(
 			errorWriter,
-			Magenta+"[REPOSITORY]"+Red+"[ERROR] "+Reset,
+			BrightBlue+"[SERVICE]"+Red+"[ERROR] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 		Warn: log.New(
 			warnWriter,
-			Blue+"[REPOSITORY]"+Yellow+"[WARN] "+Reset,
+			BrightBlue+"[SERVICE]"+Yellow+"[WARN] "+Reset,
 			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 	}, nil

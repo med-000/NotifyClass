@@ -10,12 +10,13 @@ import (
 func (r *GroupRepository) Save(g *db.Group) error {
 	var existing db.Group
 
-	err := r.db.Where("external_id = ?", g.ExternalID).First(&g).Error
+	err := r.db.Where("external_id = ?", g.ExternalID).First(&existing).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 
 		r.log.Info.Printf("Create Group external_id=%s", g.ExternalID)
-		return r.db.Create(&g).Error
-	} else if err != nil {
+		return r.db.Create(g).Error
+	}
+	if err != nil {
 		r.log.Error.Printf("Save Error:%v", err)
 		return err
 	}

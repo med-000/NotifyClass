@@ -22,19 +22,21 @@ const (
 )
 
 type Course struct {
-	ID         string `gorm:"primaryKey"`
-	ExternalID string `gorm:"type:varchar(64);not null"`
+	ID         uint   `gorm:"primaryKey"`
+	ExternalID string `gorm:"type:varchar(64);not null;uniqueIndex"`
 
 	Year int `gorm:"not null"`
 	Term int `gorm:"not null"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Classes []Class `gorm:"foreignKey:CourseID"`
 }
 
 type Class struct {
 	ID         uint   `gorm:"primaryKey"`
-	ExternalID string `gorm:"type:varchar(64);not null"`
+	ExternalID string `gorm:"type:varchar(64);not null;uniqueIndex"`
 
 	CourseID uint
 	Course   Course `gorm:"foreignKey:CourseID"`
@@ -45,27 +47,31 @@ type Class struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Groups []Group `gorm:"foreignKey:ClassID"`
 }
 
 type Group struct {
 	ID         uint   `gorm:"primaryKey"`
-	ExternalID string `gorm:"type:varchar(64);not null"`
+	ExternalID string `gorm:"type:varchar(64);not null;uniqueIndex"`
 
 	ClassID uint
-	Class   Class `gorm:"foeignKey:ClassID"`
+	Class   Class `gorm:"foreignKey:ClassID"`
 
 	Title string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Events []Event `gorm:"foreignKey:GroupID"`
 }
 
 type Event struct {
 	ID         uint   `gorm:"primaryKey"`
-	ExternalID string `gorm:"type:varchar(64);not null"`
+	ExternalID string `gorm:"type:varchar(64);not null;uniqueIndex"`
 
 	GroupID uint
-	Group   Class `gorm:"foreignKey:GroupID"`
+	Group   Group `gorm:"foreignKey:GroupID"`
 
 	Name     string
 	Category string
@@ -76,17 +82,19 @@ type Event struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Contents []Content `gorm:"foreignKey:EventID"`
 }
 
 type Content struct {
 	ID uint `gorm:"primaryKey"`
 
 	EventID uint
-	Event   Event `gorm:"foeignKey:EventID"`
+	Event   Event `gorm:"foreignKey:EventID"`
 
-	CotentType ContentType
-	URL        string
-	FileName   string
+	ContentType ContentType `gorm:"type:varchar(20)"`
+	URL         string
+	FileName    string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -107,7 +115,9 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&Course{},
 		&Class{},
+		&Group{},
 		&Event{},
+		&Content{},
 		&NotionMapping{},
 	)
 }

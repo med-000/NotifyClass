@@ -1,4 +1,4 @@
-package scraping
+package service
 
 import (
 	"fmt"
@@ -7,21 +7,25 @@ import (
 	"github.com/gocolly/colly"
 	"github.com/med-000/notifyclass/pkg/logger"
 	"github.com/med-000/notifyclass/pkg/parser"
+	"github.com/med-000/notifyclass/pkg/scraping"
 )
 
-func (s *Scraper) FetchAll(req GetCourseRequest) (*parser.Course, error) {
+func (s *Service) FetchAll(req GetCourseRequest) (*parser.Course, error) {
 	allowdomain := os.Getenv("ALLOW_DOMAIN")
 
 	c := colly.NewCollector(
 		colly.AllowedDomains(allowdomain),
 	)
 
+	scraperlogger, _ := logger.NewScraperLogger()
+	sc := scraping.NewScraper(scraperlogger)
+
 	parserlogger, _ := logger.NewParserLogger()
 	p := parser.NewParser(parserlogger)
 
 	s.log.Info.Printf("start FetchAll user=%s year=%d term=%d", req.UserID, req.Year, req.Term)
 
-	coursehtml, err := s.FetchCourseHTML(c, req.UserID, req.Password, req.Year, req.Term)
+	coursehtml, err := sc.FetchCourseHTML(c, req.UserID, req.Password, req.Year, req.Term)
 	if err != nil {
 		s.log.Error.Printf("failed FetchCourseHTML: %v", err)
 		return nil, err
@@ -44,7 +48,7 @@ func (s *Scraper) FetchAll(req GetCourseRequest) (*parser.Course, error) {
 	for i := range classes {
 		s.log.Info.Printf("fetch class[%d] title=%s url=%s", i, classes[i].Title, classes[i].URL)
 
-		classhtml, err := s.FetchClassHTML(c, classes[i].URL)
+		classhtml, err := sc.FetchClassHTML(c, classes[i].URL)
 		if err != nil {
 			s.log.Error.Printf("failed FetchClassHTML index=%d url=%s err=%v", i, classes[i].URL, err)
 			continue
@@ -68,7 +72,7 @@ func (s *Scraper) FetchAll(req GetCourseRequest) (*parser.Course, error) {
 					continue
 				}
 
-				contenthtml, err := s.FetchContentHTML(c, e.URL)
+				contenthtml, err := sc.FetchContentHTML(c, e.URL)
 				if err != nil {
 					s.log.Error.Printf("failed FetchContentHTML class=%d group=%d event=%d url=%s err=%v", i, gi, ei, e.URL, err)
 					continue
@@ -109,5 +113,5 @@ func (s *Scraper) FetchAll(req GetCourseRequest) (*parser.Course, error) {
 
 // CourseIDの変換関数
 func makeCourseID(year int, term int) string {
-	return fmt.Sprintf("%d_%d", year, term)
+	return fmt.Sprintf("%d%d", year, term)
 }

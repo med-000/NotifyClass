@@ -31,13 +31,14 @@ func (r *ClassRepository) FindByExternalID(externalID string) (*db.Class, error)
 func (r *ClassRepository) Save(c *db.Class) error {
 	var existing db.Class
 
-	err := r.db.Where("external_id = ?", c.ExternalID).First(&existing).Error
+	err := r.db.Where("external_id = ? AND course_id = ?", c.ExternalID, c.CourseID).First(&existing).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		r.log.Info.Printf("Create class external_id=%s", c.ExternalID)
-		return r.db.Create(&c).Error
+		return r.db.Create(c).Error
+	}
 
-	} else if err != nil {
+	if err != nil {
 		r.log.Error.Printf("Save Error: %v", err)
 		return err
 	}

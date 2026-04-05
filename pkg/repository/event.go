@@ -10,13 +10,14 @@ import (
 func (r *EventRepository) Save(e *db.Event) error {
 	var existing db.Event
 
-	err := r.db.Where("external_id = ?", e.ExternalID).First(&e).Error
+	err := r.db.Where("external_id = ?", e.ExternalID).First(&existing).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 
 		r.log.Info.Printf("Create event external_id=%s", e.ExternalID)
-		return r.db.Create(&e).Error
-
-	} else if err != nil {
+		return r.db.Create(e).Error
+	}
+	
+	if err != nil {
 		r.log.Error.Printf("Save Error:,%v", err)
 		return err
 	}

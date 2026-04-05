@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/med-000/notifyclass/db"
 	"github.com/med-000/notifyclass/pkg/logger"
-	"github.com/med-000/notifyclass/pkg/scraping"
+	"github.com/med-000/notifyclass/pkg/service"
 )
 
 func main() {
@@ -15,20 +17,27 @@ func main() {
 	if err != nil {
 		fmt.Printf("なんかおかしい")
 	}
-	scraperLogger, err := logger.NewScraperLogger()
+	database, err := db.NewDB()
 	if err != nil {
-		panic(fmt.Sprintf("failed to init scraper logger: %v", err))
+		log.Fatal(err)
 	}
 
-	scraper := scraping.NewScraper(scraperLogger)
+	if err := db.Migrate(database); err != nil {
+		log.Fatal(err)
+	}
 
-	req := scraping.GetCourseRequest{
+	log.Println("DB ready")
+
+	serviceLogger, _ := logger.NewServiceLogger()
+	s := service.NewService(serviceLogger)
+
+	req := service.GetCourseRequest{
 		UserID:   os.Getenv("USER_ID"),
 		Password: os.Getenv("PASSWORD"),
 		Year:     2025,
 		Term:     1,
 	}
-	course, err := scraper.FetchAll(req)
+	course, err := s.FetchAll(req)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -41,6 +50,12 @@ func main() {
 	}
 
 	fmt.Println("exported to course.json")
+	err = s.SaveAll(database, course)
+	if err != nil {
+		fmt.Println("failed to save database:", err)
+		return
+	}
+
 }
 
 func exportToJSON(filename string, data any) error {
