@@ -2,6 +2,7 @@ package discord
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/med-000/notifyclass/pkg/repository"
 	"gorm.io/gorm"
 )
+
+const maxDisplayedTasks = 10
 
 type Service struct {
 	dbConn        *gorm.DB
@@ -35,7 +38,8 @@ func (s *Service) BuildPendingTasksMessage(now time.Time) (string, error) {
 	s.log.Info.Printf("build pending tasks message count=%d", len(tasks))
 	return formatPendingTasksMessage(
 		fmt.Sprintf("未完了タスク一覧です。(%s)", now.Format("2006-01-02")),
-		tasks,
+		selectTasksForDisplay(tasks, now),
+		len(tasks),
 	), nil
 }
 
@@ -69,10 +73,10 @@ func (s *Service) BuildPendingTasksBySlotMessage(content string) (string, error)
 		slot.Period,
 	)
 
-	return formatPendingTasksMessage(title, tasks), nil
+	return formatPendingTasksMessage(title, selectTasksForDisplay(tasks, time.Now()), len(tasks)), nil
 }
 
-func formatPendingTasksMessage(title string, tasks []repository.PendingTaskRow) string {
+func formatPendingTasksMessage(title string, tasks []repository.PendingTaskRow, totalCount int) string {
 	if len(tasks) == 0 {
 		return title + "\n該当する未完了タスクはありません。"
 	}
@@ -81,7 +85,67 @@ func formatPendingTasksMessage(title string, tasks []repository.PendingTaskRow) 
 	for i, task := range tasks {
 		lines = append(lines, formatTaskLine(i+1, task))
 	}
+	if totalCount > len(tasks) {
+		lines = append(lines, fmt.Sprintf("...他 %d 件", totalCount-len(tasks)))
+	}
 	return strings.Join(lines, "\n")
+}
+
+func selectTasksForDisplay(tasks []repository.PendingTaskRow, now time.Time) []repository.PendingTaskRow {
+	upcoming := make([]repository.PendingTaskRow, 0, len(tasks))
+	overdue := make([]repository.PendingTaskRow, 0, len(tasks))
+	undated := make([]repository.PendingTaskRow, 0, len(tasks))
+
+	for _, task := range tasks {
+		if task.Deadline == nil {
+			undated = append(undated, task)
+			continue
+		}
+
+		if task.Deadline.Before(now) {
+			overdue = append(overdue, task)
+			continue
+		}
+
+		upcoming = append(upcoming, task)
+	}
+
+	sort.Slice(upcoming, func(i, j int) bool {
+		return upcoming[i].Deadline.Before(*upcoming[j].Deadline)
+	})
+
+	sort.Slice(overdue, func(i, j int) bool {
+		return overdue[i].Deadline.After(*overdue[j].Deadline)
+	})
+
+	sort.Slice(undated, func(i, j int) bool {
+		if undated[i].Year != undated[j].Year {
+			return undated[i].Year < undated[j].Year
+		}
+		if undated[i].Term != undated[j].Term {
+			return undated[i].Term < undated[j].Term
+		}
+		if undated[i].Day != undated[j].Day {
+			return undated[i].Day < undated[j].Day
+		}
+		return undated[i].Period < undated[j].Period
+	})
+
+	switch {
+	case len(upcoming) > 0:
+		return limitTasks(upcoming, maxDisplayedTasks)
+	case len(overdue) > 0:
+		return limitTasks(overdue, maxDisplayedTasks)
+	default:
+		return limitTasks(undated, maxDisplayedTasks)
+	}
+}
+
+func limitTasks(tasks []repository.PendingTaskRow, max int) []repository.PendingTaskRow {
+	if len(tasks) <= max {
+		return tasks
+	}
+	return tasks[:max]
 }
 
 func formatTaskLine(index int, task repository.PendingTaskRow) string {

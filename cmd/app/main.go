@@ -22,7 +22,7 @@ func main() {
 
 	log.Println("DB ready")
 
-	if err := appflow.RunFullPipeline(database, "course.json"); err != nil {
-		log.Fatal("failed to run app pipeline:", err)
+	if err := appflow.RunScheduler(database, "course.json"); err != nil {
+		log.Fatal("failed to run app scheduler:", err)
 	}
 }

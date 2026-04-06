@@ -3,16 +3,22 @@ package appflow
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/med-000/notifyclass/pkg/parser"
+	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 )
 
-const statusFilePath = "runtime/appflow_status.json"
+const (
+	statusFilePath      = "runtime/appflow_status.json"
+	syncRequestFilePath = "runtime/sync_request.json"
+	defaultSyncSchedule = "0 6 * * *"
+)
 
 type Status struct {
 	Busy      bool      `json:"busy"`
@@ -20,6 +26,11 @@ type Status struct {
 	StartedAt time.Time `json:"started_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	LastError string    `json:"last_error,omitempty"`
+}
+
+type SyncRequest struct {
+	Source      string    `json:"source"`
+	RequestedAt time.Time `json:"requested_at"`
 }
 
 func RunFullPipeline(dbConn *gorm.DB, exportFilename string) error {
@@ -73,6 +84,49 @@ func RunFullPipeline(dbConn *gorm.DB, exportFilename string) error {
 	return clearStatus()
 }
 
+func RunScheduler(dbConn *gorm.DB, exportFilename string) error {
+	schedule := os.Getenv("APP_SYNC_SCHEDULE")
+	if schedule == "" {
+		schedule = defaultSyncSchedule
+	}
+
+	triggerCh := make(chan string, 1)
+	scheduler := cron.New()
+
+	if _, err := scheduler.AddFunc(schedule, func() {
+		enqueueTrigger(triggerCh, "scheduled")
+	}); err != nil {
+		return fmt.Errorf("add cron schedule: %w", err)
+	}
+
+	scheduler.Start()
+	defer scheduler.Stop()
+
+	log.Printf("backend scheduler started schedule=%s", schedule)
+
+	requestTicker := time.NewTicker(3 * time.Second)
+	defer requestTicker.Stop()
+
+	for {
+		select {
+		case source := <-triggerCh:
+			if err := runTriggeredPipeline(dbConn, exportFilename, source); err != nil {
+				log.Printf("pipeline run failed source=%s err=%v", source, err)
+			}
+		case <-requestTicker.C:
+			request, err := ConsumeSyncRequest()
+			if err != nil {
+				log.Printf("failed to consume sync request err=%v", err)
+				continue
+			}
+			if request == nil {
+				continue
+			}
+			enqueueTrigger(triggerCh, request.Source)
+		}
+	}
+}
+
 func ReadStatus() (*Status, error) {
 	body, err := os.ReadFile(statusFilePath)
 	if err != nil {
@@ -88,6 +142,74 @@ func ReadStatus() (*Status, error) {
 	}
 
 	return &status, nil
+}
+
+func ReadSyncRequest() (*SyncRequest, error) {
+	body, err := os.ReadFile(syncRequestFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var request SyncRequest
+	if err := json.Unmarshal(body, &request); err != nil {
+		return nil, err
+	}
+
+	return &request, nil
+}
+
+func RequestSync(source string) (bool, error) {
+	status, err := ReadStatus()
+	if err != nil {
+		return false, err
+	}
+	if status != nil && status.Busy {
+		return false, nil
+	}
+
+	request, err := ReadSyncRequest()
+	if err != nil {
+		return false, err
+	}
+	if request != nil {
+		return false, nil
+	}
+
+	request = &SyncRequest{
+		Source:      source,
+		RequestedAt: time.Now(),
+	}
+
+	if err := os.MkdirAll(filepath.Dir(syncRequestFilePath), 0o755); err != nil {
+		return false, err
+	}
+
+	body, err := json.MarshalIndent(request, "", "  ")
+	if err != nil {
+		return false, err
+	}
+
+	if err := os.WriteFile(syncRequestFilePath, body, 0o644); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func ConsumeSyncRequest() (*SyncRequest, error) {
+	request, err := ReadSyncRequest()
+	if err != nil || request == nil {
+		return request, err
+	}
+
+	if err := os.Remove(syncRequestFilePath); err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	return request, nil
 }
 
 func fetchCourseWithStatus() (*parser.Course, error) {
@@ -144,7 +266,11 @@ func setStatus(status Status) error {
 }
 
 func clearStatus() error {
-	return os.Remove(statusFilePath)
+	err := os.Remove(statusFilePath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }
 
 func NotifyDiscordError(message string) error {
@@ -161,4 +287,26 @@ func NotifyDiscordError(message string) error {
 
 	_, err = session.ChannelMessageSend(channelID, message)
 	return err
+}
+
+func runTriggeredPipeline(dbConn *gorm.DB, exportFilename, source string) error {
+	status, err := ReadStatus()
+	if err != nil {
+		return err
+	}
+	if status != nil && status.Busy {
+		log.Printf("skip trigger source=%s reason=busy stage=%s", source, status.Stage)
+		return nil
+	}
+
+	log.Printf("start pipeline source=%s", source)
+	return RunFullPipeline(dbConn, exportFilename)
+}
+
+func enqueueTrigger(triggerCh chan<- string, source string) {
+	select {
+	case triggerCh <- source:
+	default:
+		log.Printf("skip enqueue trigger source=%s reason=already queued", source)
+	}
 }

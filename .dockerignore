@@ -1,0 +1,10 @@
+.git
+.gitignore
+data
+logs
+runtime
+tmp
+course.json
+notion_debug.json
+memo.html
+*.log

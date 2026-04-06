@@ -85,6 +85,9 @@ func (h *botHandler) onMessage(s *discordgo.Session, m *discordgo.MessageCreate)
 	content := m.Content
 
 	switch {
+	case content == "/sync":
+		h.log.Info.Printf("sync command received author=%s channel=%s", m.Author.Username, m.ChannelID)
+		h.replyWithSyncRequest(s, m.ChannelID, m.Author.Username)
 	case isMentioned(m.Mentions, s.State.User.ID):
 		h.log.Info.Printf("mention received author=%s channel=%s", m.Author.Username, m.ChannelID)
 		if h.replyIfBusy(s, m.ChannelID) {
@@ -98,6 +101,33 @@ func (h *botHandler) onMessage(s *discordgo.Session, m *discordgo.MessageCreate)
 		}
 		h.replyWithSlotTasks(s, m.ChannelID, content)
 	}
+}
+
+func (h *botHandler) replyWithSyncRequest(s *discordgo.Session, channelID string, username string) {
+	if h.replyIfBusy(s, channelID) {
+		return
+	}
+
+	accepted, err := appflow.RequestSync("discord:" + username)
+	if err != nil {
+		h.log.Error.Printf("failed to request sync err=%v", err)
+		if _, sendErr := s.ChannelMessageSend(channelID, "sync リクエストの受付に失敗しました。"); sendErr != nil {
+			h.log.Error.Printf("send error channel=%s err=%v", channelID, sendErr)
+		}
+		return
+	}
+
+	message := "sync リクエストを受け付けました。backend で順次処理します。"
+	if !accepted {
+		message = "現在 sync は実行中、またはキュー済みです。処理完了まで待ってください。"
+	}
+
+	if _, err := s.ChannelMessageSend(channelID, message); err != nil {
+		h.log.Error.Printf("send error channel=%s err=%v", channelID, err)
+		return
+	}
+
+	h.log.Info.Printf("sync reply sent channel=%s accepted=%t", channelID, accepted)
 }
 
 func (h *botHandler) replyIfBusy(s *discordgo.Session, channelID string) bool {
