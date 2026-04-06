@@ -27,6 +27,8 @@ func (r *EventRepository) Save(e *db.Event) error {
 	existing.Category = e.Category
 	existing.StartAt = e.StartAt
 	existing.EndAt = e.EndAt
+	existing.GroupName = e.GroupName
+	existing.IsDone = e.IsDone
 
 	r.log.Info.Printf("Update couse existing_id=%s", e.ExternalID)
 	return r.db.Save(&existing).Error

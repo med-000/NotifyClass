@@ -37,6 +37,7 @@ func ToDBEvent(e *parser.Event, classID uint) *db.Event {
 		GroupName:  e.GroupName,
 		StartAt:    start,
 		EndAt:      end,
+		IsDone:     defaultEventIsDone(e.Category),
 	}
 }
 
@@ -68,4 +69,13 @@ func parseDate(dateStr string) (*time.Time, *time.Time) {
 	}
 
 	return &start, &end
+}
+
+func defaultEventIsDone(category string) bool {
+	switch strings.TrimSpace(category) {
+	case "レポート", "試験", "レポート（成績非公開）":
+		return false
+	default:
+		return true
+	}
 }
