@@ -54,7 +54,7 @@ func RunFullPipeline(dbConn *gorm.DB, exportFilename string) error {
 		return failPipeline("notion pull", err)
 	}
 
-	course, err := fetchCourseWithStatus()
+	courses, err := fetchCoursesWithStatus()
 	if err != nil {
 		return failPipeline("fetch", err)
 	}
@@ -62,14 +62,14 @@ func RunFullPipeline(dbConn *gorm.DB, exportFilename string) error {
 	if err := updateStage("json export"); err != nil {
 		return err
 	}
-	if err := ExportCourseToJSON(exportFilename, course); err != nil {
+	if err := ExportCourseToJSON(exportFilename, courses); err != nil {
 		return failPipeline("json export", err)
 	}
 
 	if err := updateStage("db save"); err != nil {
 		return err
 	}
-	if err := SaveCourseToDB(dbConn, course); err != nil {
+	if err := SaveCoursesToDB(dbConn, courses); err != nil {
 		return failPipeline("db save", err)
 	}
 
@@ -212,12 +212,12 @@ func ConsumeSyncRequest() (*SyncRequest, error) {
 	return request, nil
 }
 
-func fetchCourseWithStatus() (*parser.Course, error) {
+func fetchCoursesWithStatus() ([]*parser.Course, error) {
 	if err := updateStage("fetch"); err != nil {
 		return nil, err
 	}
 
-	return FetchCourse()
+	return FetchCourses(time.Now())
 }
 
 func updateStage(stage string) error {

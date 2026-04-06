@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/med-000/notifyclass/db"
@@ -23,13 +24,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	course, err := appflow.FetchCourse()
+	courses, err := appflow.FetchCourses(time.Now())
 	if err != nil {
 		_ = appflow.NotifyDiscordError(fmt.Sprintf("fetch error: %v", err))
-		log.Fatal("failed to fetch course:", err)
+		log.Fatal("failed to fetch courses:", err)
 	}
 
-	if err := appflow.SaveCourseToDB(dbConn, course); err != nil {
+	if err := appflow.SaveCoursesToDB(dbConn, courses); err != nil {
 		_ = appflow.NotifyDiscordError(fmt.Sprintf("db save error: %v", err))
 		log.Fatal("failed to save database:", err)
 	}
