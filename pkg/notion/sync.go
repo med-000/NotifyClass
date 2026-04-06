@@ -56,6 +56,10 @@ func SyncEventCompletionFromNotion(dbConn *gorm.DB, notionLog *logger.NotionLogg
 	if err != nil {
 		return fmt.Errorf("load event mappings by page id: %w", err)
 	}
+	eventDoneByExternalID, err := loadEventDoneByExternalID(dbConn)
+	if err != nil {
+		return fmt.Errorf("load event done states: %w", err)
+	}
 
 	for {
 		response, err := QueryDatabase(cfg.EventDatabaseID, databaseQueryRequest{
@@ -67,7 +71,7 @@ func SyncEventCompletionFromNotion(dbConn *gorm.DB, notionLog *logger.NotionLogg
 		}
 
 		for _, page := range response.Results {
-			if err := syncSingleEventCompletion(dbConn, notionLog, cfg, page, eventMappingsByPageID); err != nil {
+			if err := syncSingleEventCompletion(dbConn, notionLog, cfg, page, eventMappingsByPageID, eventDoneByExternalID); err != nil {
 				notionLog.Error.Printf("sync event completion failed notion_page_id=%s err=%v", page.ID, err)
 				continue
 			}
@@ -158,6 +162,7 @@ func syncSingleEventCompletion(
 	cfg Config,
 	page notionPage,
 	eventMappingsByPageID map[string]string,
+	eventDoneByExternalID map[string]bool,
 ) error {
 	externalID := eventMappingsByPageID[page.ID]
 	if externalID == "" {
@@ -177,6 +182,12 @@ func syncSingleEventCompletion(
 	}
 
 	done := *property.Checkbox
+	currentDone, exists := eventDoneByExternalID[externalID]
+	if exists && currentDone == done {
+		notionLog.Info.Printf("event completion unchanged external_id=%s notion_page_id=%s is_done=%t", externalID, page.ID, done)
+		return nil
+	}
+
 	result := dbConn.
 		Model(&db.Event{}).
 		Where("external_id = ?", externalID).
@@ -191,6 +202,7 @@ func syncSingleEventCompletion(
 		return nil
 	}
 
+	eventDoneByExternalID[externalID] = done
 	notionLog.Info.Printf("event completion synced external_id=%s notion_page_id=%s is_done=%t", externalID, page.ID, done)
 	return nil
 }
@@ -264,6 +276,21 @@ func loadMappingByPageID(dbConn *gorm.DB, t db.MappingType) (map[string]string, 
 	result := make(map[string]string, len(mappings))
 	for _, mapping := range mappings {
 		result[mapping.NotionPageID] = mapping.ExternalID
+	}
+
+	return result, nil
+}
+
+func loadEventDoneByExternalID(dbConn *gorm.DB) (map[string]bool, error) {
+	var events []db.Event
+
+	if err := dbConn.Select("external_id", "is_done").Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]bool, len(events))
+	for _, event := range events {
+		result[event.ExternalID] = event.IsDone
 	}
 
 	return result, nil
