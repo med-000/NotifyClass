@@ -42,6 +42,16 @@ func FindMappingByPageID(dbConn *gorm.DB, pageID string, t db.MappingType) (*db.
 	return &m, nil
 }
 
+func LoadMappingsByType(dbConn *gorm.DB, t db.MappingType) ([]db.NotionMapping, error) {
+	var mappings []db.NotionMapping
+
+	if err := dbConn.Where("type = ?", t).Find(&mappings).Error; err != nil {
+		return nil, err
+	}
+
+	return mappings, nil
+}
+
 func SaveMapping(dbConn *gorm.DB, externalID string, t db.MappingType, pageID string) error {
 	m := db.NotionMapping{
 		ExternalID:   externalID,
@@ -76,18 +86,27 @@ func UpsertNotion(
 	t db.MappingType,
 	payload any,
 ) (string, error) {
-
 	m, err := FindMapping(dbConn, externalID, t)
 	if err != nil {
 		return "", err
 	}
 
-	if m != nil {
-		err := UpdateNotion(m.NotionPageID, payload)
+	return UpsertNotionWithPageID(dbConn, externalID, t, payload, notionPageIDFromMapping(m))
+}
+
+func UpsertNotionWithPageID(
+	dbConn *gorm.DB,
+	externalID string,
+	t db.MappingType,
+	payload any,
+	existingPageID string,
+) (string, error) {
+	if existingPageID != "" {
+		err := UpdateNotion(existingPageID, payload)
 		if err != nil {
 			return "", fmt.Errorf("update notion error: %w", err)
 		}
-		return m.NotionPageID, nil
+		return existingPageID, nil
 	}
 
 	pageID, err := CreateNotion(payload)
@@ -101,4 +120,11 @@ func UpsertNotion(
 	}
 
 	return pageID, nil
+}
+
+func notionPageIDFromMapping(m *db.NotionMapping) string {
+	if m == nil {
+		return ""
+	}
+	return m.NotionPageID
 }
