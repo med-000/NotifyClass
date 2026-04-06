@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/med-000/notifyclass/db"
 	"github.com/med-000/notifyclass/pkg/logger"
+	"github.com/med-000/notifyclass/pkg/notion"
 	"github.com/med-000/notifyclass/pkg/service"
 )
 
@@ -30,12 +31,13 @@ func main() {
 
 	serviceLogger, _ := logger.NewServiceLogger()
 	s := service.NewService(serviceLogger)
+	notionLogger, _ := logger.NewNotionLogger()
 
 	req := service.GetCourseRequest{
 		UserID:   os.Getenv("USER_ID"),
 		Password: os.Getenv("PASSWORD"),
 		Year:     2025,
-		Term:     1,
+		Term:     2,
 	}
 	course, err := s.FetchAll(req)
 	if err != nil {
@@ -53,6 +55,13 @@ func main() {
 	err = s.SaveAll(database, course)
 	if err != nil {
 		fmt.Println("failed to save database:", err)
+		return
+	}
+
+	cfg := notion.LoadConfigFromEnv()
+	err = notion.SyncAllFromDB(database, notionLogger, cfg)
+	if err != nil {
+		fmt.Println("failed to sync notion:", err)
 		return
 	}
 

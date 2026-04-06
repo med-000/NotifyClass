@@ -2,53 +2,24 @@ package notion
 
 import (
 	"fmt"
-	"log"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/med-000/notifyclass/db"
 )
 
-func BuildClassPayload(databaseID string, c db.Class) map[string]interface{} {
+func BuildClassPayload(cfg Config, c db.Class) map[string]interface{} {
 	day := dayToString(c.Day)
-
-	year, term, err := parseCourseID(c.CourseID)
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
 
 	return map[string]interface{}{
 		"parent": map[string]interface{}{
-			"database_id": databaseID,
+			"database_id": cfg.ClassDatabaseID,
 		},
 		"properties": map[string]interface{}{
-			"講義名": map[string]interface{}{
-				"title": []map[string]interface{}{
-					{
-						"text": map[string]interface{}{
-							"content": c.Title,
-						},
-					},
-				},
-			},
-			"曜日": map[string]interface{}{
-				"select": map[string]interface{}{
-					"name": day,
-				},
-			},
-			"時限": map[string]interface{}{
-				"select": map[string]interface{}{
-					"name": periodToString(c.Period),
-				},
-			},
-			"開講年度": map[string]interface{}{
-				"number": year,
-			},
-			"開講学期": map[string]interface{}{
-				"number": term,
-			},
+			cfg.ClassTitleProperty:  titleProperty(c.Title),
+			cfg.ClassDayProperty:    selectProperty(day),
+			cfg.ClassPeriodProperty: selectProperty(periodToString(c.Period)),
+			cfg.ClassYearProperty:   numberProperty(c.Course.Year),
+			cfg.ClassTermProperty:   numberProperty(c.Course.Term),
 		},
 	}
 }
@@ -76,72 +47,91 @@ func periodToString(p int) string {
 	return fmt.Sprintf("%d限", p)
 }
 
-func parseCourseID(courseID string) (int, int, error) {
-	parts := strings.Split(courseID, "_")
-	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("invalid course_id: %s", courseID)
+func BuildEventPayload(cfg Config, e db.Event, classPageID string) map[string]interface{} {
+	return map[string]interface{}{
+		"parent": map[string]interface{}{
+			"database_id": cfg.EventDatabaseID,
+		},
+		"properties": map[string]interface{}{
+			cfg.EventTitleProperty:    titleProperty(e.Name),
+			cfg.EventGroupProperty:    richTextProperty(e.GroupName),
+			cfg.EventDoneProperty:     checkboxProperty(e.IsDone),
+			cfg.EventDateProperty:     dateProperty(e.StartAt, e.EndAt),
+			cfg.EventCategoryProperty: selectProperty(e.Category),
+			cfg.EventClassProperty:    relationProperty(classPageID),
+		},
 	}
-
-	year, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return 0, 0, fmt.Errorf("invalid year in course_id: %s", courseID)
-	}
-
-	term, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return 0, 0, fmt.Errorf("invalid term in course_id: %s", courseID)
-	}
-
-	return year, term, nil
 }
 
-func BuildEventPayload(databaseID string, e EventWithRelation) map[string]interface{} {
+func titleProperty(content string) map[string]interface{} {
+	return map[string]interface{}{
+		"title": []map[string]interface{}{
+			{
+				"text": map[string]interface{}{
+					"content": content,
+				},
+			},
+		},
+	}
+}
 
-	var date map[string]interface{}
+func richTextProperty(content string) map[string]interface{} {
+	return map[string]interface{}{
+		"rich_text": []map[string]interface{}{
+			{
+				"text": map[string]interface{}{
+					"content": content,
+				},
+			},
+		},
+	}
+}
 
-	if e.StartAt != nil {
-		date = map[string]interface{}{
-			"start": e.StartAt.Format(time.RFC3339),
+func selectProperty(name string) map[string]interface{} {
+	return map[string]interface{}{
+		"select": map[string]interface{}{
+			"name": name,
+		},
+	}
+}
+
+func numberProperty(value int) map[string]interface{} {
+	return map[string]interface{}{
+		"number": value,
+	}
+}
+
+func checkboxProperty(value bool) map[string]interface{} {
+	return map[string]interface{}{
+		"checkbox": value,
+	}
+}
+
+func dateProperty(startAt, endAt *time.Time) map[string]interface{} {
+	if startAt == nil {
+		return map[string]interface{}{
+			"date": nil,
 		}
 	}
 
+	date := map[string]interface{}{
+		"start": startAt.Format(time.RFC3339),
+	}
+
+	if endAt != nil {
+		date["end"] = endAt.Format(time.RFC3339)
+	}
+
 	return map[string]interface{}{
-		"parent": map[string]interface{}{
-			"database_id": databaseID,
-		},
-		"properties": map[string]interface{}{
-			"資料名": map[string]interface{}{
-				"title": []map[string]interface{}{
-					{
-						"text": map[string]interface{}{
-							"content": e.Name,
-						},
-					},
-				},
-			},
-			"グループ": map[string]interface{}{
-				"rich_text": []map[string]interface{}{
-					{
-						"text": map[string]interface{}{
-							"content": e.Group,
-						},
-					},
-				},
-			},
-			"種類": map[string]interface{}{
-				"select": map[string]interface{}{
-					"name": e.Category,
-				},
-			},
-			"日付": map[string]interface{}{
-				"date": date,
-			},
-			"講義名": map[string]interface{}{
-				"relation": []map[string]interface{}{
-					{
-						"id": e.ClassPageID,
-					},
-				},
+		"date": date,
+	}
+}
+
+func relationProperty(pageID string) map[string]interface{} {
+	return map[string]interface{}{
+		"relation": []map[string]interface{}{
+			{
+				"id": pageID,
 			},
 		},
 	}

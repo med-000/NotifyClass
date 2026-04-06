@@ -12,7 +12,6 @@ import (
 func main() {
 	_ = godotenv.Load()
 
-	//DB接続
 	dbConn, err := db.NewDB()
 	if err != nil {
 		log.Fatal(err)
@@ -25,10 +24,7 @@ func main() {
 
 	cfg := notion.LoadConfigFromEnv()
 
-	notionLogger.Info.Printf("start notion sync")
-	if err := notion.SyncAllFromDB(dbConn, notionLogger, cfg); err != nil {
-		log.Fatal("notion sync error:", err)
+	if err := notion.SyncEventCompletionFromNotion(dbConn, notionLogger, cfg); err != nil {
+		log.Fatal("notion pull error:", err)
 	}
-
-	notionLogger.Info.Printf("notion sync done")
 }

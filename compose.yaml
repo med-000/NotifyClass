@@ -10,10 +10,4 @@ services:
       MYSQL_PASSWORD: password
     volumes:
       - ./data:/var/lib/mysql
-  backend:
-    build:
-      context: ./pkg
-    container_name: backend
-    restart: always
-    volumes:
       - ./logs:/notifyclass/logs

@@ -3,11 +3,22 @@ package notion
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
+	"time"
 )
+
+var (
+	ErrMissingNotionAPIKey    = errors.New("NOTION_API_KEY is missing")
+	ErrMissingClassDatabaseID = errors.New("NOTION_CLASS_DATABASE_ID is missing")
+	ErrMissingEventDatabaseID = errors.New("NOTION_EVENT_DATABASE_ID is missing")
+)
+
+var defaultHTTPClient = &http.Client{
+	Timeout: 15 * time.Second,
+}
 
 func CreateNotion(payload any) (string, error) {
 	url := "https://api.notion.com/v1/pages"
@@ -24,13 +35,12 @@ func CreateNotion(payload any) (string, error) {
 	}
 
 	// ヘッダー
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("NOTION_API_KEY"))
+	req.Header.Set("Authorization", "Bearer "+LoadConfigFromEnv().APIToken)
 	req.Header.Set("Notion-Version", "2022-06-28")
 	req.Header.Set("Content-Type", "application/json")
 
 	// 実行
-	client := &http.Client{}
-	res, err := client.Do(req)
+	res, err := defaultHTTPClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("request send error: %w", err)
 	}
@@ -82,12 +92,11 @@ func UpdateNotion(pageID string, payload any) error {
 		return fmt.Errorf("request create error: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("NOTION_API_KEY"))
+	req.Header.Set("Authorization", "Bearer "+LoadConfigFromEnv().APIToken)
 	req.Header.Set("Notion-Version", "2022-06-28")
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	res, err := client.Do(req)
+	res, err := defaultHTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("request send error: %w", err)
 	}
@@ -100,4 +109,40 @@ func UpdateNotion(pageID string, payload any) error {
 	}
 
 	return nil
+}
+
+func QueryDatabase(databaseID string, payload any) (*databaseQueryResponse, error) {
+	url := "https://api.notion.com/v1/databases/" + databaseID + "/query"
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("json marshal error: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("request create error: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+LoadConfigFromEnv().APIToken)
+	req.Header.Set("Notion-Version", "2022-06-28")
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := defaultHTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request send error: %w", err)
+	}
+	defer res.Body.Close()
+
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode >= 300 {
+		return nil, fmt.Errorf("notion query error: status=%d body=%s", res.StatusCode, string(body))
+	}
+
+	var result databaseQueryResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("json unmarshal error: %w", err)
+	}
+
+	return &result, nil
 }

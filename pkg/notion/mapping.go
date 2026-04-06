@@ -25,6 +25,23 @@ func FindMapping(dbConn *gorm.DB, externalID string, t db.MappingType) (*db.Noti
 	return &m, nil
 }
 
+func FindMappingByPageID(dbConn *gorm.DB, pageID string, t db.MappingType) (*db.NotionMapping, error) {
+	var m db.NotionMapping
+
+	err := dbConn.
+		Where("notion_page_id = ? AND type = ?", pageID, t).
+		First(&m).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &m, nil
+}
+
 func SaveMapping(dbConn *gorm.DB, externalID string, t db.MappingType, pageID string) error {
 	m := db.NotionMapping{
 		ExternalID:   externalID,
