@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -8,6 +9,7 @@ import (
 	discordgo "github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 	"github.com/med-000/notifyclass/db"
+	"github.com/med-000/notifyclass/pkg/appflow"
 	appdiscord "github.com/med-000/notifyclass/pkg/discord"
 	appLogger "github.com/med-000/notifyclass/pkg/logger"
 )
@@ -85,11 +87,41 @@ func (h *botHandler) onMessage(s *discordgo.Session, m *discordgo.MessageCreate)
 	switch {
 	case isMentioned(m.Mentions, s.State.User.ID):
 		h.log.Info.Printf("mention received author=%s channel=%s", m.Author.Username, m.ChannelID)
+		if h.replyIfBusy(s, m.ChannelID) {
+			return
+		}
 		h.replyWithPendingTasks(s, m.ChannelID)
 	case appdiscord.IsSlotCommand(content):
 		h.log.Info.Printf("slot command received author=%s channel=%s content=%s", m.Author.Username, m.ChannelID, content)
+		if h.replyIfBusy(s, m.ChannelID) {
+			return
+		}
 		h.replyWithSlotTasks(s, m.ChannelID, content)
 	}
+}
+
+func (h *botHandler) replyIfBusy(s *discordgo.Session, channelID string) bool {
+	status, err := appflow.ReadStatus()
+	if err != nil {
+		h.log.Error.Printf("failed to read appflow status err=%v", err)
+		return false
+	}
+
+	if status == nil || !status.Busy {
+		return false
+	}
+
+	message := fmt.Sprintf(
+		"現在 `%s` を実行中です。処理が終わってからもう一度試してください。開始時刻: %s",
+		status.Stage,
+		status.StartedAt.Format("2006-01-02 15:04:05"),
+	)
+
+	if _, err := s.ChannelMessageSend(channelID, message); err != nil {
+		h.log.Error.Printf("send busy status error channel=%s err=%v", channelID, err)
+	}
+
+	return true
 }
 
 func (h *botHandler) replyWithPendingTasks(s *discordgo.Session, channelID string) {
