@@ -106,6 +106,9 @@ func UpsertNotionWithPageID(
 		if err != nil {
 			return "", fmt.Errorf("update notion error: %w", err)
 		}
+		if err := UpsertMapping(dbConn, externalID, t, existingPageID); err != nil {
+			return "", fmt.Errorf("touch mapping error: %w", err)
+		}
 		return existingPageID, nil
 	}
 

@@ -2,6 +2,7 @@ package notion
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/med-000/notifyclass/db"
 	"github.com/med-000/notifyclass/pkg/logger"
@@ -93,10 +94,16 @@ func SyncClassesToNotion(
 	dbConn *gorm.DB,
 	notionLog *logger.NotionLogger,
 	classes []db.Class,
-	classMappings map[string]string,
+	classMappings map[string]db.NotionMapping,
 	cfg Config,
 ) error {
 	for _, class := range classes {
+		mapping, hasMapping := classMappings[class.ExternalID]
+		if hasMapping && !shouldSyncClass(class, mapping) {
+			notionLog.Info.Printf("class sync skipped external_id=%s reason=unchanged", class.ExternalID)
+			continue
+		}
+
 		payload := BuildClassPayload(cfg, class)
 
 		pageID, err := UpsertNotionWithPageID(
@@ -104,14 +111,19 @@ func SyncClassesToNotion(
 			class.ExternalID,
 			db.MappingTypeClass,
 			payload,
-			classMappings[class.ExternalID],
+			mapping.NotionPageID,
 		)
 		if err != nil {
 			notionLog.Error.Printf("class sync failed external_id=%s title=%s err=%v", class.ExternalID, class.Title, err)
 			continue
 		}
 
-		classMappings[class.ExternalID] = pageID
+		classMappings[class.ExternalID] = db.NotionMapping{
+			ExternalID:   class.ExternalID,
+			Type:         db.MappingTypeClass,
+			NotionPageID: pageID,
+			UpdatedAt:    time.Now(),
+		}
 		notionLog.Info.Printf("class synced external_id=%s notion_page_id=%s", class.ExternalID, pageID)
 	}
 
@@ -122,14 +134,20 @@ func SyncEventsToNotion(
 	dbConn *gorm.DB,
 	notionLog *logger.NotionLogger,
 	events []db.Event,
-	classMappings map[string]string,
-	eventMappings map[string]string,
+	classMappings map[string]db.NotionMapping,
+	eventMappings map[string]db.NotionMapping,
 	cfg Config,
 ) error {
 	for _, event := range events {
-		classPageID := classMappings[event.Class.ExternalID]
+		classPageID := classMappings[event.Class.ExternalID].NotionPageID
 		if classPageID == "" {
 			notionLog.Warn.Printf("class mapping missing class_external_id=%s", event.Class.ExternalID)
+			continue
+		}
+
+		mapping, hasMapping := eventMappings[event.ExternalID]
+		if hasMapping && !shouldSyncEvent(event, mapping) {
+			notionLog.Info.Printf("event sync skipped external_id=%s reason=unchanged", event.ExternalID)
 			continue
 		}
 
@@ -141,7 +159,7 @@ func SyncEventsToNotion(
 			event.ExternalID,
 			db.MappingTypeEvent,
 			payload,
-			eventMappings[event.ExternalID],
+			mapping.NotionPageID,
 			3,
 		)
 		if err != nil {
@@ -149,7 +167,12 @@ func SyncEventsToNotion(
 			continue
 		}
 
-		eventMappings[event.ExternalID] = pageID
+		eventMappings[event.ExternalID] = db.NotionMapping{
+			ExternalID:   event.ExternalID,
+			Type:         db.MappingTypeEvent,
+			NotionPageID: pageID,
+			UpdatedAt:    time.Now(),
+		}
 		notionLog.Info.Printf("event synced external_id=%s notion_page_id=%s", event.ExternalID, pageID)
 	}
 
@@ -161,14 +184,15 @@ func syncSingleEventCompletion(
 	notionLog *logger.NotionLogger,
 	cfg Config,
 	page notionPage,
-	eventMappingsByPageID map[string]string,
+	eventMappingsByPageID map[string]db.NotionMapping,
 	eventDoneByExternalID map[string]bool,
 ) error {
-	externalID := eventMappingsByPageID[page.ID]
-	if externalID == "" {
+	mapping, ok := eventMappingsByPageID[page.ID]
+	if !ok || mapping.ExternalID == "" {
 		notionLog.Warn.Printf("event mapping missing notion_page_id=%s", page.ID)
 		return nil
 	}
+	externalID := mapping.ExternalID
 
 	property, ok := page.Properties[cfg.EventDoneProperty]
 	if !ok {
@@ -253,29 +277,29 @@ func upsertWithRetry(
 	return "", err
 }
 
-func loadMappingByExternalID(dbConn *gorm.DB, t db.MappingType) (map[string]string, error) {
+func loadMappingByExternalID(dbConn *gorm.DB, t db.MappingType) (map[string]db.NotionMapping, error) {
 	mappings, err := LoadMappingsByType(dbConn, t)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make(map[string]string, len(mappings))
+	result := make(map[string]db.NotionMapping, len(mappings))
 	for _, mapping := range mappings {
-		result[mapping.ExternalID] = mapping.NotionPageID
+		result[mapping.ExternalID] = mapping
 	}
 
 	return result, nil
 }
 
-func loadMappingByPageID(dbConn *gorm.DB, t db.MappingType) (map[string]string, error) {
+func loadMappingByPageID(dbConn *gorm.DB, t db.MappingType) (map[string]db.NotionMapping, error) {
 	mappings, err := LoadMappingsByType(dbConn, t)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make(map[string]string, len(mappings))
+	result := make(map[string]db.NotionMapping, len(mappings))
 	for _, mapping := range mappings {
-		result[mapping.NotionPageID] = mapping.ExternalID
+		result[mapping.NotionPageID] = mapping
 	}
 
 	return result, nil
@@ -294,4 +318,16 @@ func loadEventDoneByExternalID(dbConn *gorm.DB) (map[string]bool, error) {
 	}
 
 	return result, nil
+}
+
+func shouldSyncClass(class db.Class, mapping db.NotionMapping) bool {
+	lastSourceUpdate := class.UpdatedAt
+	if class.Course.UpdatedAt.After(lastSourceUpdate) {
+		lastSourceUpdate = class.Course.UpdatedAt
+	}
+	return lastSourceUpdate.After(mapping.UpdatedAt)
+}
+
+func shouldSyncEvent(event db.Event, mapping db.NotionMapping) bool {
+	return event.UpdatedAt.After(mapping.UpdatedAt)
 }
