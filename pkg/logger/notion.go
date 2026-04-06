@@ -1,10 +1,6 @@
 package logger
 
-import (
-	"io"
-	"log"
-	"os"
-)
+import "log"
 
 type NotionLogger struct {
 	Info  *log.Logger
@@ -13,79 +9,23 @@ type NotionLogger struct {
 }
 
 func NewNotionLogger() (*NotionLogger, error) {
-	if err := os.MkdirAll("logs/notion", 0o755); err != nil {
-		return nil, err
-	}
-
-	infoFile, err := os.OpenFile(
-		"logs/notion/info.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
+	infoWriter, errorWriter, warnWriter, err := buildLogWriters("notion")
 	if err != nil {
 		return nil, err
 	}
-
-	errorFile, err := os.OpenFile(
-		"logs/notion/error.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	warnFile, err := os.OpenFile(
-		"logs/notion/warn.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	appFile, err := os.OpenFile(
-		"logs/app.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	infoWriter := io.MultiWriter(
-		os.Stdout,
-		infoFile,
-		appFile,
-	)
-
-	errorWriter := io.MultiWriter(
-		os.Stderr,
-		errorFile,
-		appFile,
-	)
-
-	warnWriter := io.MultiWriter(
-		os.Stderr,
-		warnFile,
-		appFile,
-	)
 
 	return &NotionLogger{
-		Info: log.New(
+		Info: newStdLogger(
 			infoWriter,
 			BrightMagenta+"[NOTION]"+Green+"[INFO] "+Reset,
-			log.Ldate|log.Ltime|log.Lshortfile,
 		),
-		Error: log.New(
+		Error: newStdLogger(
 			errorWriter,
 			BrightMagenta+"[NOTION]"+Red+"[ERROR] "+Reset,
-			log.Ldate|log.Ltime|log.Lshortfile,
 		),
-		Warn: log.New(
+		Warn: newStdLogger(
 			warnWriter,
 			BrightMagenta+"[NOTION]"+Yellow+"[WARN] "+Reset,
-			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 	}, nil
 }

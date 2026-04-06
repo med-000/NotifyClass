@@ -1,10 +1,6 @@
 package logger
 
-import (
-	"io"
-	"log"
-	"os"
-)
+import "log"
 
 type RepositoryLogger struct {
 	Info  *log.Logger
@@ -13,78 +9,23 @@ type RepositoryLogger struct {
 }
 
 func NewRepositoryLogger() (*RepositoryLogger, error) {
-	if err := os.MkdirAll("logs/repository", 0o755); err != nil {
-		return nil, err
-	}
-
-	infoFile, err := os.OpenFile(
-		"logs/repository/info.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
+	infoWriter, errorWriter, warnWriter, err := buildLogWriters("repository")
 	if err != nil {
 		return nil, err
 	}
-
-	errorFile, err := os.OpenFile(
-		"logs/repository/error.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	warnFile, err := os.OpenFile(
-		"logs/repository/warn.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	appFile, err := os.OpenFile(
-		"logs/app.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0o644,
-	)
-	if err != nil {
-		return nil, err
-	}
-	infoWriter := io.MultiWriter(
-		os.Stdout,
-		infoFile,
-		appFile,
-	)
-
-	errorWriter := io.MultiWriter(
-		os.Stderr,
-		errorFile,
-		appFile,
-	)
-
-	warnWriter := io.MultiWriter(
-		os.Stderr,
-		warnFile,
-		appFile,
-	)
 
 	return &RepositoryLogger{
-		Info: log.New(
+		Info: newStdLogger(
 			infoWriter,
 			Magenta+"[REPOSITORY]"+Green+"[INFO] "+Reset,
-			log.Ldate|log.Ltime|log.Lshortfile,
 		),
-		Error: log.New(
+		Error: newStdLogger(
 			errorWriter,
 			Magenta+"[REPOSITORY]"+Red+"[ERROR] "+Reset,
-			log.Ldate|log.Ltime|log.Lshortfile,
 		),
-		Warn: log.New(
+		Warn: newStdLogger(
 			warnWriter,
 			Blue+"[REPOSITORY]"+Yellow+"[WARN] "+Reset,
-			log.Ldate|log.Ltime|log.Lshortfile,
 		),
 	}, nil
 }
