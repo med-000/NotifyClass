@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -19,6 +20,8 @@ var (
 var defaultHTTPClient = &http.Client{
 	Timeout: 15 * time.Second,
 }
+
+const maxNotionRequestAttempts = 4
 
 func CreateNotion(payload any) (string, error) {
 	url := "https://api.notion.com/v1/pages"
@@ -40,13 +43,11 @@ func CreateNotion(payload any) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 
 	// 実行
-	res, err := defaultHTTPClient.Do(req)
+	res, body, err := doNotionRequest(req)
 	if err != nil {
 		return "", fmt.Errorf("request send error: %w", err)
 	}
 	defer res.Body.Close()
-
-	body, _ := io.ReadAll(res.Body)
 
 	// エラーハンドリング
 	if res.StatusCode >= 300 {
@@ -96,13 +97,11 @@ func UpdateNotion(pageID string, payload any) error {
 	req.Header.Set("Notion-Version", "2022-06-28")
 	req.Header.Set("Content-Type", "application/json")
 
-	res, err := defaultHTTPClient.Do(req)
+	res, resBody, err := doNotionRequest(req)
 	if err != nil {
 		return fmt.Errorf("request send error: %w", err)
 	}
 	defer res.Body.Close()
-
-	resBody, _ := io.ReadAll(res.Body)
 
 	if res.StatusCode >= 300 {
 		return fmt.Errorf("notion update error: status=%d body=%s", res.StatusCode, string(resBody))
@@ -128,13 +127,11 @@ func QueryDatabase(databaseID string, payload any) (*databaseQueryResponse, erro
 	req.Header.Set("Notion-Version", "2022-06-28")
 	req.Header.Set("Content-Type", "application/json")
 
-	res, err := defaultHTTPClient.Do(req)
+	res, body, err := doNotionRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("request send error: %w", err)
 	}
 	defer res.Body.Close()
-
-	body, _ := io.ReadAll(res.Body)
 	if res.StatusCode >= 300 {
 		return nil, fmt.Errorf("notion query error: status=%d body=%s", res.StatusCode, string(body))
 	}
@@ -145,4 +142,72 @@ func QueryDatabase(databaseID string, payload any) (*databaseQueryResponse, erro
 	}
 
 	return &result, nil
+}
+
+func doNotionRequest(req *http.Request) (*http.Response, []byte, error) {
+	var lastErr error
+
+	for attempt := 1; attempt <= maxNotionRequestAttempts; attempt++ {
+		clonedReq := cloneRequest(req)
+
+		res, err := defaultHTTPClient.Do(clonedReq)
+		if err != nil {
+			lastErr = err
+			if attempt == maxNotionRequestAttempts {
+				return nil, nil, err
+			}
+			time.Sleep(backoffDuration(attempt))
+			continue
+		}
+
+		body, readErr := io.ReadAll(res.Body)
+		res.Body.Close()
+		if readErr != nil {
+			lastErr = readErr
+			if attempt == maxNotionRequestAttempts {
+				return nil, nil, readErr
+			}
+			time.Sleep(backoffDuration(attempt))
+			continue
+		}
+
+		if shouldRetryStatus(res.StatusCode) && attempt < maxNotionRequestAttempts {
+			time.Sleep(retryDelay(res, attempt))
+			lastErr = fmt.Errorf("notion retryable status=%d body=%s", res.StatusCode, string(body))
+			continue
+		}
+
+		res.Body = io.NopCloser(bytes.NewReader(body))
+		return res, body, nil
+	}
+
+	return nil, nil, lastErr
+}
+
+func cloneRequest(req *http.Request) *http.Request {
+	cloned := req.Clone(req.Context())
+	if req.GetBody != nil {
+		body, err := req.GetBody()
+		if err == nil {
+			cloned.Body = body
+		}
+	}
+	return cloned
+}
+
+func shouldRetryStatus(statusCode int) bool {
+	return statusCode == http.StatusTooManyRequests || statusCode >= 500
+}
+
+func retryDelay(res *http.Response, attempt int) time.Duration {
+	if header := res.Header.Get("Retry-After"); header != "" {
+		if seconds, err := strconv.Atoi(header); err == nil && seconds > 0 {
+			return time.Duration(seconds) * time.Second
+		}
+	}
+	return backoffDuration(attempt)
+}
+
+func backoffDuration(attempt int) time.Duration {
+	return time.Duration(attempt) * 500 * time.Millisecond
 }

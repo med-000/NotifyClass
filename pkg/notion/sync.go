@@ -2,14 +2,11 @@ package notion
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/med-000/notifyclass/db"
 	"github.com/med-000/notifyclass/pkg/logger"
 	"gorm.io/gorm"
 )
-
-const notionRateLimitInterval = 350 * time.Millisecond
 
 func SyncAllFromDB(dbConn *gorm.DB, notionLog *logger.NotionLogger, cfg Config) error {
 	if err := cfg.Validate(); err != nil {
@@ -60,7 +57,6 @@ func SyncEventCompletionFromNotion(dbConn *gorm.DB, notionLog *logger.NotionLogg
 				notionLog.Error.Printf("sync event completion failed notion_page_id=%s err=%v", page.ID, err)
 				continue
 			}
-			time.Sleep(notionRateLimitInterval)
 		}
 
 		if !response.HasMore || response.NextCursor == nil || *response.NextCursor == "" {
@@ -86,7 +82,6 @@ func SyncClassesToNotion(dbConn *gorm.DB, notionLog *logger.NotionLogger, classe
 		}
 
 		notionLog.Info.Printf("class synced external_id=%s notion_page_id=%s", class.ExternalID, pageID)
-		time.Sleep(notionRateLimitInterval)
 	}
 
 	return nil
@@ -113,7 +108,6 @@ func SyncEventsToNotion(dbConn *gorm.DB, notionLog *logger.NotionLogger, events 
 		}
 
 		notionLog.Info.Printf("event synced external_id=%s notion_page_id=%s", event.ExternalID, pageID)
-		time.Sleep(notionRateLimitInterval)
 	}
 
 	return nil
@@ -204,7 +198,6 @@ func upsertWithRetry(
 		}
 
 		notionLog.Warn.Printf("notion retry attempt=%d external_id=%s err=%v", attempt, externalID, err)
-		time.Sleep(1 * time.Second)
 	}
 
 	return "", err
