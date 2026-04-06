@@ -16,7 +16,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := appflow.SyncNotionPull(dbConn); err != nil {
+	if err := appflow.SyncNotionPush(dbConn); err != nil {
 		log.Fatal(err)
 	}
 }
