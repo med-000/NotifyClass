@@ -189,14 +189,17 @@ Event DB の `完了` checkbox を DB の `is_done` に反映します。
 - Discord 通知先 Channel ID
 - Notion API Key / Database ID
 - `APP_SYNC_SCHEDULE`
+- `APP_DUE_REMINDER_SCHEDULE`
 
 例:
 
 ```env
 APP_SYNC_SCHEDULE=0 2,13 * * *
+APP_DUE_REMINDER_SCHEDULE=0 5,17 * * *
 ```
 
 毎日 `02:00` と `13:00` に同期を行います。
+未完了で本日締め切りのタスクがある場合は、毎日 `05:00` と `17:00` に Discord 通知を行います。
 
 ## **Technical Highlights**
 

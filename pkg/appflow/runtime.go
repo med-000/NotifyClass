@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/med-000/notifyclass/pkg/logger"
 	"github.com/med-000/notifyclass/pkg/parser"
+	"github.com/med-000/notifyclass/pkg/repository"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 )
@@ -20,6 +22,8 @@ const (
 	syncRequestFilePath = "runtime/sync_request.json"
 	initialSyncDonePath = "runtime/initial_sync_done.json"
 	defaultSyncSchedule = "0 6 * * *"
+	defaultDueReminder  = "0 5,17 * * *"
+	maxReminderTasks    = 10
 )
 
 type Status struct {
@@ -99,6 +103,10 @@ func RunScheduler(dbConn *gorm.DB, exportFilename string) error {
 	if schedule == "" {
 		schedule = defaultSyncSchedule
 	}
+	reminderSchedule := os.Getenv("APP_DUE_REMINDER_SCHEDULE")
+	if reminderSchedule == "" {
+		reminderSchedule = defaultDueReminder
+	}
 
 	triggerCh := make(chan string, 1)
 	scheduler := cron.New()
@@ -108,11 +116,18 @@ func RunScheduler(dbConn *gorm.DB, exportFilename string) error {
 	}); err != nil {
 		return fmt.Errorf("add cron schedule: %w", err)
 	}
+	if _, err := scheduler.AddFunc(reminderSchedule, func() {
+		if err := notifyDueTodayTasks(dbConn, time.Now()); err != nil {
+			log.Printf("due reminder failed err=%v", err)
+		}
+	}); err != nil {
+		return fmt.Errorf("add due reminder schedule: %w", err)
+	}
 
 	scheduler.Start()
 	defer scheduler.Stop()
 
-	log.Printf("backend scheduler started schedule=%s", schedule)
+	log.Printf("backend scheduler started sync_schedule=%s due_reminder_schedule=%s", schedule, reminderSchedule)
 
 	requestTicker := time.NewTicker(3 * time.Second)
 	defer requestTicker.Stop()
@@ -329,6 +344,67 @@ func NotifyDiscordError(message string) error {
 
 	_, err = session.ChannelMessageSend(channelID, message)
 	return err
+}
+
+func notifyDueTodayTasks(dbConn *gorm.DB, now time.Time) error {
+	repositoryLog, err := logger.NewRepositoryLogger()
+	if err != nil {
+		return fmt.Errorf("new repository logger: %w", err)
+	}
+
+	eventRepo := repository.NewEventRepository(dbConn, repositoryLog)
+	tasks, err := eventRepo.FindPendingDueEventsByDate(now)
+	if err != nil {
+		return err
+	}
+	if len(tasks) == 0 {
+		log.Printf("skip due reminder date=%s reason=no tasks", now.Format("2006-01-02"))
+		return nil
+	}
+
+	message := buildDueTodayReminderMessage(now, tasks)
+	if err := NotifyDiscordError(message); err != nil {
+		return err
+	}
+
+	log.Printf("sent due reminder date=%s count=%d", now.Format("2006-01-02"), len(tasks))
+	return nil
+}
+
+func buildDueTodayReminderMessage(now time.Time, tasks []repository.DueEvent) string {
+	lines := []string{
+		fmt.Sprintf("本日締め切りの未完了タスクがあります。(%s)", now.Format("2006-01-02")),
+	}
+
+	displayCount := len(tasks)
+	if displayCount > maxReminderTasks {
+		displayCount = maxReminderTasks
+	}
+
+	for i := 0; i < displayCount; i++ {
+		task := tasks[i]
+		lines = append(lines, fmt.Sprintf(
+			"%d. [%s] %s / %s / %s",
+			i+1,
+			emptyToFallback(task.Category, "未分類"),
+			emptyToFallback(task.ClassTitle, "講義名なし"),
+			task.Name,
+			task.Deadline.Format("15:04"),
+		))
+	}
+
+	if len(tasks) > displayCount {
+		lines = append(lines, fmt.Sprintf("...他 %d 件", len(tasks)-displayCount))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func emptyToFallback(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
 }
 
 func runTriggeredPipeline(dbConn *gorm.DB, exportFilename, source string) error {
