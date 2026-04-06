@@ -33,6 +33,26 @@ func BuildFetchRequests(now time.Time) ([]service.GetCourseRequest, error) {
 	password := os.Getenv("PASSWORD")
 
 	if strings.EqualFold(os.Getenv("APP_INITIAL_SYNC"), "true") {
+		done, err := IsInitialSyncAlreadyDone()
+		if err != nil {
+			return nil, err
+		}
+		if done {
+			year, term, err := resolveTargetAcademicPeriod(now)
+			if err != nil {
+				return nil, err
+			}
+
+			return []service.GetCourseRequest{
+				{
+					UserID:   userID,
+					Password: password,
+					Year:     year,
+					Term:     term,
+				},
+			}, nil
+		}
+
 		return buildInitialFetchRequests(userID, password, now)
 	}
 

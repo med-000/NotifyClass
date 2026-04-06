@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -17,6 +18,7 @@ import (
 const (
 	statusFilePath      = "runtime/appflow_status.json"
 	syncRequestFilePath = "runtime/sync_request.json"
+	initialSyncDonePath = "runtime/initial_sync_done.json"
 	defaultSyncSchedule = "0 6 * * *"
 )
 
@@ -31,6 +33,10 @@ type Status struct {
 type SyncRequest struct {
 	Source      string    `json:"source"`
 	RequestedAt time.Time `json:"requested_at"`
+}
+
+type InitialSyncDone struct {
+	CompletedAt time.Time `json:"completed_at"`
 }
 
 func RunFullPipeline(dbConn *gorm.DB, exportFilename string) error {
@@ -78,6 +84,10 @@ func RunFullPipeline(dbConn *gorm.DB, exportFilename string) error {
 	}
 	if err := SyncNotionPush(dbConn); err != nil {
 		return failPipeline("notion push", err)
+	}
+
+	if err := markInitialSyncDoneIfNeeded(); err != nil {
+		return failPipeline("initial sync mark", err)
 	}
 
 	cleanup = false
@@ -159,6 +169,17 @@ func ReadSyncRequest() (*SyncRequest, error) {
 	}
 
 	return &request, nil
+}
+
+func IsInitialSyncAlreadyDone() (bool, error) {
+	_, err := os.Stat(initialSyncDonePath)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
 
 func RequestSync(source string) (bool, error) {
@@ -271,6 +292,27 @@ func clearStatus() error {
 		return nil
 	}
 	return err
+}
+
+func markInitialSyncDoneIfNeeded() error {
+	if !strings.EqualFold(os.Getenv("APP_INITIAL_SYNC"), "true") {
+		return nil
+	}
+
+	done := InitialSyncDone{
+		CompletedAt: time.Now(),
+	}
+
+	if err := os.MkdirAll(filepath.Dir(initialSyncDonePath), 0o755); err != nil {
+		return err
+	}
+
+	body, err := json.MarshalIndent(done, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(initialSyncDonePath, body, 0o644)
 }
 
 func NotifyDiscordError(message string) error {
