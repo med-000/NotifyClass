@@ -31,6 +31,11 @@ func (r *EventRepository) Save(e *db.Event) error {
 	existing.IsDone = e.IsDone
 
 	r.log.Info.Printf("Update couse existing_id=%s", e.ExternalID)
-	return r.db.Save(&existing).Error
+	if err := r.db.Save(&existing).Error; err != nil {
+		return err
+	}
+
+	e.ID = existing.ID
+	return nil
 
 }

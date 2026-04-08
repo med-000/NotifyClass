@@ -49,5 +49,10 @@ func (r *ClassRepository) Save(c *db.Class) error {
 	existing.Title = c.Title
 
 	r.log.Info.Printf("Update class external_id=%s", c.ExternalID)
-	return r.db.Save(&existing).Error
+	if err := r.db.Save(&existing).Error; err != nil {
+		return err
+	}
+
+	c.ID = existing.ID
+	return nil
 }
