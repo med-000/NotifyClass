@@ -137,6 +137,9 @@ func RunScheduler(dbConn *gorm.DB, exportFilename string) error {
 		case source := <-triggerCh:
 			if err := runTriggeredPipeline(dbConn, exportFilename, source); err != nil {
 				log.Printf("pipeline run failed source=%s err=%v", source, err)
+				if notifyErr := notifyPipelineFailure(source, err); notifyErr != nil {
+					log.Printf("pipeline failure notification failed source=%s err=%v", source, notifyErr)
+				}
 			}
 		case <-requestTicker.C:
 			request, err := ConsumeSyncRequest()
@@ -284,8 +287,7 @@ func failPipeline(stage string, err error) error {
 		_ = setStatus(*status)
 	}
 
-	_ = NotifyDiscordError(message)
-	return err
+	return fmt.Errorf("%s: %w", stage, err)
 }
 
 func setStatus(status Status) error {
@@ -331,6 +333,10 @@ func markInitialSyncDoneIfNeeded() error {
 }
 
 func NotifyDiscordError(message string) error {
+	return NotifyDiscordMessage(message)
+}
+
+func NotifyDiscordMessage(message string) error {
 	token := os.Getenv("DISCORD_TOKEN")
 	channelID := os.Getenv("DISCORD_NOTIFY_CHANNEL_ID")
 	if token == "" || channelID == "" {
@@ -418,7 +424,17 @@ func runTriggeredPipeline(dbConn *gorm.DB, exportFilename, source string) error 
 	}
 
 	log.Printf("start pipeline source=%s", source)
-	return RunFullPipeline(dbConn, exportFilename)
+	if err := RunFullPipeline(dbConn, exportFilename); err != nil {
+		return err
+	}
+
+	if isDiscordSyncSource(source) {
+		if err := notifyPipelineSuccess(source); err != nil {
+			log.Printf("pipeline success notification failed source=%s err=%v", source, err)
+		}
+	}
+
+	return nil
 }
 
 func enqueueTrigger(triggerCh chan<- string, source string) {
@@ -427,4 +443,23 @@ func enqueueTrigger(triggerCh chan<- string, source string) {
 	default:
 		log.Printf("skip enqueue trigger source=%s reason=already queued", source)
 	}
+}
+
+func notifyPipelineFailure(source string, err error) error {
+	return NotifyDiscordError(fmt.Sprintf(
+		"sync に失敗しました。\nsource: %s\nerror: %v",
+		source,
+		err,
+	))
+}
+
+func notifyPipelineSuccess(source string) error {
+	return NotifyDiscordMessage(fmt.Sprintf(
+		"sync が正常終了しました。\nsource: %s",
+		source,
+	))
+}
+
+func isDiscordSyncSource(source string) bool {
+	return strings.HasPrefix(source, "discord:")
 }
