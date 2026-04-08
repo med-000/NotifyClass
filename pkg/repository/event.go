@@ -23,6 +23,7 @@ func (r *EventRepository) Save(e *db.Event) error {
 	}
 
 	// update
+	existing.ClassID = e.ClassID
 	existing.Name = e.Name
 	existing.Category = e.Category
 	existing.StartAt = e.StartAt

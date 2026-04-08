@@ -44,6 +44,7 @@ func (r *ClassRepository) Save(c *db.Class) error {
 	}
 
 	// update
+	existing.CourseID = c.CourseID
 	existing.Day = c.Day
 	existing.Period = c.Period
 	existing.Title = c.Title

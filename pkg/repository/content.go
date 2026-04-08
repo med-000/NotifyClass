@@ -22,10 +22,16 @@ func (r *ContentRepository) Save(c *db.Content) error {
 	}
 
 	// update
+	existing.EventID = c.EventID
 	existing.ContentType = c.ContentType
 	existing.URL = c.URL
 	existing.FileName = c.FileName
 
 	r.log.Info.Printf("Update content URL=%s", c.URL)
-	return r.db.Save(&existing).Error
+	if err := r.db.Save(&existing).Error; err != nil {
+		return err
+	}
+
+	c.ID = existing.ID
+	return nil
 }
